@@ -1,0 +1,4 @@
+*.exe
+*.o
+benchmark/case5.txt 
+benchmark/case6.txt 
