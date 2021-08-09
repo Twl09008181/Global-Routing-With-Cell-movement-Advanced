@@ -132,7 +132,7 @@ void Init( std::string path,std::string fileName)
 void RipUPinit(Graph&graph,Net&net);//testing :因為現在init routing還沒改成tree,到時候要改成tree的結構Rip up
 void removedemandTesting(Graph&graph,Net&net);//testing :因為現在init routing還沒改成tree,到時候要改成tree的結構Rip up
 void show_demand(Graph&graph);//for test
-
+void addingdemandTesting(Graph&graph,Net&net);//testing :因為現在init routing還沒改成tree,到時候要改成tree的結構Rip up
 
 
 
@@ -173,6 +173,11 @@ int main(int argc, char** argv)
     for(auto net:graph->Nets){
         RipUPinit(*graph,*net.second);
         removedemandTesting(*graph,*net.second);
+    }
+    show_demand(*graph);
+
+    for(auto net:graph->Nets){
+        addingdemandTesting(*graph,*net.second);
     }
 
     show_demand(*graph);
@@ -233,6 +238,16 @@ void removedemandTesting(Graph&graph,Net&net)//testing :因為現在init routing
         if(grid.second)
         {
             removedemand(*grid.first,net);
+        }
+    }
+}
+void addingdemandTesting(Graph&graph,Net&net)
+{
+    for(auto grid:*net.PassingGrids)
+    {
+        if(grid.second)
+        {
+            addingdemand(*grid.first,net);
         }
     }
 }
