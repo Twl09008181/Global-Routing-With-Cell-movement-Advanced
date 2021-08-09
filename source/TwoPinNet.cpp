@@ -1,10 +1,5 @@
 #include "../header/TwoPinNet.hpp"
 
-std::ostream& operator<<(std::ostream&os,const pos&p1)
-{
-    os<<p1.row<<" "<<p1.col<<" "<<p1.lay<<" ";
-    return os;
-}
 bool is_pseudo(node*pin,std::map<std::string,std::set<int>>&PointMap)
 {
     std::string position_2d = std::to_string(pin->p.row)+","+std::to_string(pin->p.col);
@@ -104,23 +99,10 @@ void treeInit(std::map<std::string,node*>&pins,std::map<std::string,std::set<int
     {
         auto pin = p.second;
         std::string position2d = p.first;
-
-        // if(is_pseudo(pin,PointMap)||pin->p.lay!=-1){
-        //     pin->routing_tree = new tree();//Init Tree
-        //     if(pin->routing_tree==nullptr){std::cerr<<"treeInit allocate error!!\n";exit(1);}
-        //     pin->routing_tree->all.push_back(pin);
-        // }
-
         pin->routing_tree = new tree();//Init Tree
         if(pin->routing_tree==nullptr){std::cerr<<"treeInit allocate error!!\n";exit(1);}
         pin->routing_tree->all.push_back(pin);
         MultiLayerPoint(pin,PointMap,two_pin_nets);
-        
-        // if(!is_pseudo(pin,PointMap)&&pin->p.lay==-1)
-        // {
-        //     pin->routing_tree->all.remove(pin);
-        //     delete pin;
-        // }
     }
 }
 
@@ -200,7 +182,6 @@ void get_two_pins(std::list<TwoPinNet>& two_pin_nets,Net&net)
             if(pin1->p.lay==-1){bothPseudo.push_back({pin1,pin2});}
             else{two_pin_nets.push_back({pin1,pin2});}
         }
-
         if(pin1==pin2&&!is_pseudo(pin1,PointMap))//sometimes two-pins are at same Ggrid. 
         {
             //mulitPinInGrid.insert(pin1);
@@ -211,11 +192,8 @@ void get_two_pins(std::list<TwoPinNet>& two_pin_nets,Net&net)
      //Let pseudo be the last append (easy for routing)
     for(auto psedoPins:bothPseudo){two_pin_nets.push_back(psedoPins);}
     
-    two_pin_net_checker1(&t,net);//checker 1 for checking 2d position of pin.
     //Step4 : generate Init routing tree and consider those who have same 2D-pos by using via. 
     treeInit(pins,PointMap,two_pin_nets);
-    two_pin_net_checker2(two_pin_nets,net);//checker 2 for checking 3d position of pin.
-
 
     if(t.branch!=nullptr)
         free(t.branch);

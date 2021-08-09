@@ -124,19 +124,19 @@ Graph* graph = nullptr;
 std::map<Net*,tree*>routingTree;//Net完成後都會有對應的tree
 
 
-void Init(std::string path,std::string fileName);
-
-
-
-
-
-
-
-inline std::ostream& operator<<(std::ostream&os,pos&p)
+void Init( std::string path,std::string fileName)
 {
-    os<<p.row<<" "<<p.col<<" "<<p.lay;
-    return os;
+    graph = new Graph(path+fileName);
 }
+
+void RipUPinit(Graph&graph,Net&net);//testing :因為現在init routing還沒改成tree,到時候要改成tree的結構Rip up
+void removedemandTesting(Graph&graph,Net&net);//testing :因為現在init routing還沒改成tree,到時候要改成tree的結構Rip up
+void show_demand(Graph&graph);//for test
+
+
+
+
+
 int main(int argc, char** argv)
 {
     readLUT();
@@ -151,47 +151,88 @@ int main(int argc, char** argv)
 
     std::cout<<"graph Init done!\n";
 
-    std::cout<<"start to test two-pin-nets gen1111!\n";
-
-
-    //同步測試完成
-    // auto &net1 = graph->getNet(1);
-    // std::list<TwoPinNet> net1set;
-    // tree* initTree1 = get_two_pins(net1set,net1);
-    // net1set.front().second->p.lay = 100;
-    // for(auto pins:net1set)
-    //     std::cout<<pins.first->p<<" "<<pins.second->p<<"\n";
-
-    // auto &net2 = graph->getNet(2);
-    // std::list<TwoPinNet> net2set;
-    // tree* initTree2 = get_two_pins(net2set,net2);
-    // net2set.front().second->p.lay = 100;
-    // for(auto pins:net2set)
-    //     std::cout<<pins.first->p<<" "<<pins.second->p<<"\n";
 
     //待新增destructor (clear all nodes&Inittree) if rip-up failed
     //待新增
-
-
-
-    for(int i = 1;i<=graph->Nets.size();i++){
-        //std::cout<<"Net"<<i<<"\n";
-        std::list<TwoPinNet> sets;
-        auto &net = graph->getNet(i);
-        get_two_pins(sets,net);
-        for(auto twopin:sets)
-        {
-            std::cout<<twopin.first->p<<" "<<twopin.second->p<<" \n";
-        }
-    }
-    std::cout<<"two-pin-net-done!!\n";
+    // for(int i = 1;i<=graph->Nets.size();i++){
+    //     //std::cout<<"Net"<<i<<"\n";
+    //     std::list<TwoPinNet> sets;
+    //     auto &net = graph->getNet(i);
+    //     get_two_pins(sets,net);
+    //     for(auto twopin:sets)
+    //     {
+    //         std::cout<<twopin.first->p<<" "<<twopin.second->p<<" \n";
+    //     }
+    // }
+    // std::cout<<"two-pin-net-done!!\n";
     //check1 pin要正確lay, pin要跟flute產生的一樣,pseudo 要是-1
 
     
+    show_demand(*graph);
+
+    for(auto net:graph->Nets){
+        RipUPinit(*graph,*net.second);
+        removedemandTesting(*graph,*net.second);
+    }
+
+    show_demand(*graph);
+
+
 
 	return 0;
 }
-void Init( std::string path,std::string fileName)
+
+
+
+
+void show_demand(Graph&graph)
 {
-    graph = new Graph(path+fileName);
+    int LayerNum = graph.LayerNum();
+    std::pair<int,int>Row = graph.RowBound();
+    std::pair<int,int>Col = graph.ColBound();
+
+    int total_demand = 0;
+    for(int lay = 1;lay <= LayerNum;lay++)
+    {
+        //#ifdef PARSER_TEST
+        //std::cout<<"Layer : "<< lay <<"\n";
+        //#endif
+        for(int row = Row.second;row >=Row.first ; row--)
+        {
+            for(int col = Col.first; col <= Col.second; col++)
+            {
+                // #ifdef PARSER_TEST
+                //std::cout<<graph(row,col,lay).demand<<" ";
+                //#endif
+                total_demand+=graph(row,col,lay).demand;
+            }
+            //#ifdef PARSER_TEST
+            //std::cout<<"\n";
+            //#endif
+        }
+    }
+    std::cout<<"Total :"<<total_demand<<"\n";
+}
+
+
+//Call Enroll
+void RipUPinit(Graph&graph,Net&net)//testing :因為現在init routing還沒改成tree,到時候要改成tree的結構Rip up
+{
+    for(auto grid:*net.PassingGrids)
+    {
+        if(grid.second)
+        {
+            Enroll(*grid.first,&net);
+        }
+    }
+}
+void removedemandTesting(Graph&graph,Net&net)//testing :因為現在init routing還沒改成tree,到時候要改成tree的結構Rip up
+{
+    for(auto grid:*net.PassingGrids)
+    {
+        if(grid.second)
+        {
+            removedemand(*grid.first,net);
+        }
+    }
 }

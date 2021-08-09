@@ -68,3 +68,104 @@ std::pair<bool,bool> CanRout(int row,int col,int lay,Graph&graph,int NetId)
 }
 
 
+
+
+
+
+void Enroll(Ggrid&grid,Net*net)
+{
+    grid.enrollNet = net;
+}
+void removedemand(Ggrid&grid,Net&net)
+{
+    if(grid.enrollNet==&net)
+    {
+        grid.delete_demand();
+        Enroll(grid,nullptr);
+    }
+}
+void addingdemand(Ggrid&grid,Net&net)
+{
+    if(grid.enrollNet!=&net)
+    {
+        grid.add_demand();
+        Enroll(grid,&net);
+    }
+}
+// void RipUPinit(Graph*graph,Net&net)
+// {
+
+// }
+void RoutingInit(Graph*graph,Net&net,TwoPinNets&pinset)
+{
+    net.routingState = Net::state::routing;
+    for(auto &twopin:pinset)
+    {
+        pos pin1 = twopin.first->p;
+        pos pin2 = twopin.second->p;
+
+        if(pin1.row==pin2.row&&pin1.col==pin2.col)
+        {
+            SegmentFun(graph,net,twopin.first,twopin.second,addingdemand);
+        }
+        else{
+            if(pin1.lay!=-1){addingdemand((*graph)(pin1.row,pin1.col,pin1.lay),net);}
+            if(pin2.lay!=-1){addingdemand((*graph)(pin2.row,pin2.col,pin2.lay),net);}
+        }
+    }
+}
+
+void SegmentFun(Graph*graph,Net&net,node*v,node*u,void(*f)(Ggrid&,Net&))
+{
+    u->mark = true;
+    int sRow = v->p.row;
+    int sCol = v->p.col;
+    int sLay = v->p.lay;
+
+    int tRow = u->p.row;
+    int tCol = u->p.col;
+    int tLay = u->p.lay;
+            
+    int d_r = (sRow==tRow)? 0 : ( (sRow>tRow)? -1:1);
+    int d_c = (sCol==tCol)? 0 : ( (sCol>tCol)? -1:1);
+    int d_l = (sLay==tLay)? 0 : ( (sLay>tLay)? -1:1);  
+    using std::abs;
+    int check = abs(d_r) + abs(d_c) + abs(d_l);
+    if(check>1){std::cerr<<"error in SementFun!!! Input: "<<u->p<<" " << v->p <<" is not a segment\n";exit(1);}
+    do{
+        auto &grid = (*graph)(sRow,sCol,sLay);
+        f(grid,net);
+        sRow+=d_r;
+        sCol+=d_c;
+        sLay+=d_l;
+    }while(sRow!=tRow||sCol!=tCol||sLay!=tLay);
+}
+
+void Dfs_Segment(Graph*graph,Net&net,node*v,void(*f)(Ggrid&,Net&))
+{
+    for(auto u:v->In)
+    {
+        if(u!=nullptr&&u->mark==false)
+        {
+            u->mark = true;
+            SegmentFun(graph,net,v,u,f);
+            Dfs_Segment(graph,net,u,f);
+        }
+    }
+}
+
+void RipUp(Graph*graph,Net&net,tree*t)
+{
+    if(net.routingState==Net::state::unroute)
+    {
+        std::cout<<"RipUP warning! "<<net.netName<<" do not allocate any demand on graph!!\n";
+    }
+    else if (net.routingState==Net::state::done)
+    {
+        for(auto n:t->all)
+            n->mark = false;
+
+        for(auto leaf:t->leaf)
+            Dfs_Segment(graph,net,leaf,removedemand);
+    }
+}

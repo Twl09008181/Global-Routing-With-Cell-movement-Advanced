@@ -66,11 +66,11 @@ public:
     Layer& getLay(int Lay){
         return Layers.at(Lay-1);
     }
-    void DoneReroute();
-    bool RipUpDemand(Net&net);
-    bool RecoverDemand(Net&net);
-	void PinsInit(Net&net);
-    void PinsRemov(Net&net);
+    // void DoneReroute();
+    // bool RipUpDemand(Net&net);
+    // bool RecoverDemand(Net&net);
+	// void PinsInit(Net&net);
+    // void PinsRemov(Net&net);
 	void showEffectedNetSize();
 	CellInst* cellMoving();
 	void placementInit();

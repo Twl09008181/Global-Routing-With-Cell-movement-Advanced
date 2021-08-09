@@ -19,7 +19,11 @@ bool add_segment_3D(Ggrid&P1,Ggrid&P2,Graph&graph,int NetID);
 struct pos{
     int row,col,lay;
 };
-
+inline std::ostream& operator<<(std::ostream&os,pos&p)
+{
+    os<<p.row<<" "<<p.col<<" "<<p.lay;
+    return os;
+}
 struct tree;
 struct node{
     pos p;
@@ -34,6 +38,24 @@ struct tree{
     std::list<node*>leaf;
     std::list<node*>all;
 };
+
+using TwoPinNet = std::pair<node*,node*>;
+using TwoPinNets = std::list<TwoPinNet>;
+
+
+
+
+
+void Enroll(Ggrid&grid,Net*net);
+void removedemand(Ggrid&grid,Net&net);
+void addingdemand(Ggrid&grid,Net&net);
+
+void RoutingInit(Graph*graph,Net&net,TwoPinNets&pinset);
+void SegmentFun(Graph*graph,Net&net,node*v,node*u,void(*f)(Ggrid&,Net&));
+
+void Dfs_Segment(Graph*graph,Net&net,node*v,void(*f)(Ggrid&,Net&));
+
+void RipUp(Graph*graph,Net&net,tree*t);
 
 
 
