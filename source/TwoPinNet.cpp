@@ -56,7 +56,7 @@ int PinLayAssign(node*pin,int rmax,int cmax,int laymax,int LCstr,std::map<std::s
 }
 
 
-void MultiLayerPoint(node*pin,std::map<std::string,std::set<int>>&PointMap)
+void MultiLayerPoint(node*pin,std::map<std::string,std::set<int>>&PointMap,TwoPinNets& two_pin_nets)
 {
     std::string position2d = std::to_string(pin->p.row)+","+std::to_string(pin->p.col);
     if(!is_pseudo(pin,PointMap))//real-pin
@@ -73,35 +73,58 @@ void MultiLayerPoint(node*pin,std::map<std::string,std::set<int>>&PointMap)
             int now = (i<sort_lay.size()) ? sort_lay.at(i):last+1;
             while(last<now)
             {
+                node * n = nullptr;
                 if(last != pin->p.lay)
                 {
-                    node* n = new node();
+                    n = new node();
+                    if(n==nullptr)
+                    {
+                        std::cerr<<"MultiLayerPoint allocater failed!!\n";
+                        exit(1);
+                    }
                     n->p = pos{pin->p.row,pin->p.col,last};
                     n->routing_tree = pin->routing_tree;
                     n->routing_tree->all.push_back(n);
                 }
+                else{
+                    n = pin;
+                }
+                two_pin_nets.push_front({pin,n});
                 last++;
             }
         }
     }
 }
 
-void treeInit(std::map<std::string,node*>&pins,std::map<std::string,std::set<int>>&PointMap)
+
+
+void treeInit(std::map<std::string,node*>&pins,std::map<std::string,std::set<int>>&PointMap,TwoPinNets& two_pin_nets)
 {
     for(auto p:pins)
     {
         auto pin = p.second;
         std::string position2d = p.first;
 
-        if(is_pseudo(pin,PointMap)||pin->p.lay!=-1)
-            pin->routing_tree = new tree();//Init Tree
+        // if(is_pseudo(pin,PointMap)||pin->p.lay!=-1){
+        //     pin->routing_tree = new tree();//Init Tree
+        //     if(pin->routing_tree==nullptr){std::cerr<<"treeInit allocate error!!\n";exit(1);}
+        //     pin->routing_tree->all.push_back(pin);
+        // }
+
+        pin->routing_tree = new tree();//Init Tree
         if(pin->routing_tree==nullptr){std::cerr<<"treeInit allocate error!!\n";exit(1);}
         pin->routing_tree->all.push_back(pin);
-        MultiLayerPoint(pin,PointMap);
+        MultiLayerPoint(pin,PointMap,two_pin_nets);
+        
+        // if(!is_pseudo(pin,PointMap)&&pin->p.lay==-1)
+        // {
+        //     pin->routing_tree->all.remove(pin);
+        //     delete pin;
+        // }
     }
 }
 
-tree* get_two_pins(std::list<TwoPinNet>& two_pin_nets,Net&net)
+void get_two_pins(std::list<TwoPinNet>& two_pin_nets,Net&net)
 {
     
     int rowMax = graph->RowBound().second;
@@ -152,13 +175,6 @@ tree* get_two_pins(std::list<TwoPinNet>& two_pin_nets,Net&net)
     };
 
     std::list<TwoPinNet>bothPseudo;
-    tree* initTree = new tree();
-    std::set<node*>mulitPinInGrid;
-    if(initTree==nullptr)
-    {
-        std::cerr<<"initTree allocate error in get_two_pins!\n";
-        exit(1);
-    }
     //Step3 Init pins and do PinLayAssign
     for (int i=0; i<2*t.deg-2; i++) {
         int col1=t.branch[i].x;
@@ -187,31 +203,22 @@ tree* get_two_pins(std::list<TwoPinNet>& two_pin_nets,Net&net)
 
         if(pin1==pin2&&!is_pseudo(pin1,PointMap))//sometimes two-pins are at same Ggrid. 
         {
-            mulitPinInGrid.insert(pin1);
+            //mulitPinInGrid.insert(pin1);
+            if(pin1->p.lay==-1)
+            pin1->p.lay = PinLayAssign(pin1,rowMax,colMax,LayMax,minLayer,PointMap,tempDemand);
         }
     }
      //Let pseudo be the last append (easy for routing)
     for(auto psedoPins:bothPseudo){two_pin_nets.push_back(psedoPins);}
     
-    
-    //two_pin_net_checker1(&t,net);//checker 1 for checking 2d position of pin.
-
-    for(auto pin:mulitPinInGrid)
-    {
-        initTree->all.push_front(pin);
-        // pin->p.lay = PinLayAssign(pin,rowMax,colMax,LayMax,minLayer,PointMap,tempDemand);//important !! do not assign at this time.(for tree_init function to tell)
-        pin->routing_tree = initTree;
-    }
-
+    two_pin_net_checker1(&t,net);//checker 1 for checking 2d position of pin.
     //Step4 : generate Init routing tree and consider those who have same 2D-pos by using via. 
-    treeInit(pins,PointMap);
-    //two_pin_net_checker2(two_pin_nets,initTree,net);//checker 2 for checking 3d position of pin.
+    treeInit(pins,PointMap,two_pin_nets);
+    two_pin_net_checker2(two_pin_nets,net);//checker 2 for checking 3d position of pin.
 
 
     if(t.branch!=nullptr)
         free(t.branch);
-
-    return initTree;
 }
 
 
@@ -276,7 +283,7 @@ bool two_pin_net_checker1(Tree *flute_tree,Net&net)
     return true;
 }
 
-bool two_pin_net_checker2(std::list<TwoPinNet>& two_pin_nets,tree* initTree,Net&net)
+bool two_pin_net_checker2(std::list<TwoPinNet>& two_pin_nets,Net&net)
 {
     std::map<std::string,bool>record;
     for(auto pin:net.net_pins)
@@ -296,8 +303,7 @@ bool two_pin_net_checker2(std::list<TwoPinNet>& two_pin_nets,tree* initTree,Net&
         net_tree.insert(pins.first->routing_tree);
         net_tree.insert(pins.second->routing_tree);
     }
-    net_tree.insert(initTree);
-    
+
     for(auto t:net_tree)
     {
         if(t==nullptr)

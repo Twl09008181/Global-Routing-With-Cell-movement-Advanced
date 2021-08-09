@@ -108,7 +108,7 @@ void Graph::parser(std::string fileName){
     is >> type >> value;
     for(int i = 0;i<value;i++){
         Net *TMP = new Net(is,CellInsts,Nets);
-        PinsInit(*TMP);
+        //PinsInit(*TMP);
     }
 
     //--------------------------------------------------------BlkgDemand---------------------------------------------------------------
@@ -282,89 +282,89 @@ void Graph::placementInit(){
 	}
 }
 
-//every time moving a cell,must first PinsRemov and PinsInit again
-void Graph::PinsInit(Net&net)
-{
+// //every time moving a cell,must first PinsRemov and PinsInit again
+// void Graph::PinsInit(Net&net)
+// {
   
-    for(auto pins:net.net_pins)
-    {
-        CellInst* cell = pins.first;
-        std::string name = pins.second;
-        int lay = cell->mCell->pins[name];
-        int row = cell->row;
-        int col = cell->col;
-        auto& grid = (*this)(row,col,lay);
-        add_segment_3D(grid,grid,*this,std::stoi(net.netName.substr(1,-1)));
-        //有可能是因為還沒把net移除會造成overflow (移動cell時沒辦法確定到時候被移動掉的net有哪些)
-    }
-}
-void Graph::PinsRemov(Net&net)
-{
-    for(auto pins:net.net_pins)
-    {
-        CellInst* cell = pins.first;
-        std::string name = pins.second;
-        int lay = cell->mCell->pins[name];
-        int row = cell->row;
-        int col = cell->col;
-        auto& grid = (*this)(row,col,lay);
-        if(!net.NotPass(grid)){
-            (*net.PassingGrids)[&grid] = false;
-            grid.delete_demand();
-        }
-    }
-}
-void Graph::DoneReroute()
-{
-    for(auto net:Nets){
-        net.second->RerouteFlag = false;
-        delete net.second->PassingGridsTmp;
-        net.second->PassingGridsTmp = nullptr;
-    }
-}
-bool Graph::RipUpDemand(Net&net){
-    if(net.RerouteFlag == true){return false;}//目前資料結構cellinst可能存重複的net,因此要避免重複reroute
-    for(auto it = net.PassingGrids->begin();it!=net.PassingGrids->end();++it)
-    {
-        if(it->second==true){
-            it->first->delete_demand();
-            it->second = false;//暫時設為false
-        }
-    }
-    net.PassingGridsTmp = new std::unordered_map<Ggrid*,bool>();
-    net.PassingGridsTmp->clear();
-    std::swap(net.PassingGrids,net.PassingGridsTmp);
-    net.RerouteFlag = true;
-    return true;
-}
-bool Graph::RecoverDemand(Net&net)
-{
-    for(auto it = net.PassingGrids->begin();it!=net.PassingGrids->end();++it)
-    {
-        if(it->second==false){
-            it->first->demand++;
-            it->second = true;
-        }
-    }
-    // if(net.RerouteFlag == false)
-    // {
-    //     std::cerr<<"Warrning!! may overwrite the valid result,nust call RipUpDemand() first!!\n";
-    // }
+//     for(auto pins:net.net_pins)
+//     {
+//         CellInst* cell = pins.first;
+//         std::string name = pins.second;
+//         int lay = cell->mCell->pins[name];
+//         int row = cell->row;
+//         int col = cell->col;
+//         auto& grid = (*this)(row,col,lay);
+//         add_segment_3D(grid,grid,*this,std::stoi(net.netName.substr(1,-1)));
+//         //有可能是因為還沒把net移除會造成overflow (移動cell時沒辦法確定到時候被移動掉的net有哪些)
+//     }
+// }
+// void Graph::PinsRemov(Net&net)
+// {
+//     for(auto pins:net.net_pins)
+//     {
+//         CellInst* cell = pins.first;
+//         std::string name = pins.second;
+//         int lay = cell->mCell->pins[name];
+//         int row = cell->row;
+//         int col = cell->col;
+//         auto& grid = (*this)(row,col,lay);
+//         if(!net.NotPass(grid)){
+//             (*net.PassingGrids)[&grid] = false;
+//             grid.delete_demand();
+//         }
+//     }
+// }
+// void Graph::DoneReroute()
+// {
+//     for(auto net:Nets){
+//         net.second->RerouteFlag = false;
+//         delete net.second->PassingGridsTmp;
+//         net.second->PassingGridsTmp = nullptr;
+//     }
+// }
+// bool Graph::RipUpDemand(Net&net){
+//     if(net.RerouteFlag == true){return false;}//目前資料結構cellinst可能存重複的net,因此要避免重複reroute
+//     for(auto it = net.PassingGrids->begin();it!=net.PassingGrids->end();++it)
+//     {
+//         if(it->second==true){
+//             it->first->delete_demand();
+//             it->second = false;//暫時設為false
+//         }
+//     }
+//     net.PassingGridsTmp = new std::unordered_map<Ggrid*,bool>();
+//     net.PassingGridsTmp->clear();
+//     std::swap(net.PassingGrids,net.PassingGridsTmp);
+//     net.RerouteFlag = true;
+//     return true;
+// }
+// bool Graph::RecoverDemand(Net&net)
+// {
+//     for(auto it = net.PassingGrids->begin();it!=net.PassingGrids->end();++it)
+//     {
+//         if(it->second==false){
+//             it->first->demand++;
+//             it->second = true;
+//         }
+//     }
+//     // if(net.RerouteFlag == false)
+//     // {
+//     //     std::cerr<<"Warrning!! may overwrite the valid result,nust call RipUpDemand() first!!\n";
+//     // }
 
 
-    for(auto grid = net.PassingGrids->begin();grid!=net.PassingGrids->end();grid++)
-    {
-        if(grid->second==true)
-        {
-            grid->first->delete_demand();
-        }
-    }
+//     for(auto grid = net.PassingGrids->begin();grid!=net.PassingGrids->end();grid++)
+//     {
+//         if(grid->second==true)
+//         {
+//             grid->first->delete_demand();
+//         }
+//     }
 
-    std::swap(net.PassingGrids,net.PassingGridsTmp);
-    delete net.PassingGridsTmp;//除此以外還要去把tmp之前造成的demand清乾淨
+//     std::swap(net.PassingGrids,net.PassingGridsTmp);
+//     delete net.PassingGridsTmp;//除此以外還要去把tmp之前造成的demand清乾淨
 
 
 
-    net.PassingGridsTmp = nullptr;
-    net.RerouteFlag = false;
-}
+//     net.PassingGridsTmp = nullptr;
+//     net.RerouteFlag = false;
+// }

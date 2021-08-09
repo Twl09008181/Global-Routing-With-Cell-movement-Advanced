@@ -81,22 +81,23 @@ struct Ggrid{
     int capacity;
     int demand;
     int row,col,lay;
+
+//---------------------------------RoutingFlag-------------------------------------------
+    Net* enrollNet = nullptr;
+    bool isTarget = false;
 };
 
 struct Net{
     std::string netName;//<netName>
-    Net(std::ifstream&is,std::unordered_map<std::string,CellInst*>&CellInsts,std::unordered_map<std::string,Net*>&Nets);
-    bool AlreadyPass(Ggrid&grid){return (PassingGrids->find(&grid) != PassingGrids->end()) && ( (*PassingGrids)[&grid]==true);}
+    Net(std::ifstream&is,std::unordered_map<std::string,CellInst*>&CellInsts,std::unordered_map<std::string,Net*>&Nets);//到時候移除
+    bool AlreadyPass(Ggrid&grid){return (PassingGrids->find(&grid) != PassingGrids->end()) && ( (*PassingGrids)[&grid]==true);}//到時候移除
     bool NotPass(Ggrid&grid){return !AlreadyPass(grid);}
-    bool PassingGrid(Ggrid&grid);
-
-    //回傳值為RSMT的總線長
-    //two_pin_nets 則是使用者須自行先創遭出的容器,待執行結束後,flute algorithm所產生之RSMT的two pins pair數量即為two_pin_nets.size()
-    //two_pin_nets.at(n).at(0)=x1, two_pin_nets.at(n).at(1)=y1, two_pin_nets.at(n).at(2)=x2, two_pin_nets.at(n).at(3)=y2
-    using point = std::tuple<int,int,int>;
-    int get_two_pins(std::vector<std::pair<point,point>>& two_pin_nets);//for two-pin nets decomposition
+    bool PassingGrid(Ggrid&grid);//到時候移除
+    std::vector<Ggrid*>EndPoint;//到時候移除
+    std::unordered_map<Ggrid*,bool>*PassingGrids;//到時候移除
 
 
+    //會用到的..................................................................................
 
     int minLayer;//<minRoutingLayConstraint>
     float weight;//<weight>
@@ -104,10 +105,9 @@ struct Net{
     //記下CellInst*是為了以後移動可以得到更新的座標 x,y
     //std::string代表Pin的name,用來CellInst內查找Pin
     std::vector<PIN> net_pins;
+    enum class  state {unroute,routing,done}; //for rip-up
+    state routingState = state::unroute;
 
-    std::vector<Ggrid*>EndPoint;//2D relation: EndPoint[0]:leftmost,EndPoint[1]:rightmost,EndPoint[2]:bottom,EndPoint[3]:top
-    std::unordered_map<Ggrid*,bool>*PassingGrids;
-    std::unordered_map<Ggrid*,bool>*PassingGridsTmp = nullptr;
 
     bool RerouteFlag = false;
 	std::vector<int> fixedBoundingBox;

@@ -74,7 +74,7 @@ public:
 	void showEffectedNetSize();
 	CellInst* cellMoving();
 	void placementInit();
-    int get_two_pins(std::vector<std::pair<Net::point,Net::point>>& two_pin_nets,Net&net);
+    // int get_two_pins(std::vector<std::pair<Net::point,Net::point>>& two_pin_nets,Net&net);
 //--------------------------------------------Data Mmeber------------------------------------------------------------
     std::unordered_map<std::string,MasterCell*>mCell;
     std::unordered_map<std::string,CellInst*>CellInsts;

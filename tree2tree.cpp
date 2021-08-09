@@ -121,11 +121,22 @@ float VIA_W = 1;
 
 Graph* graph = nullptr;
 
+std::map<Net*,tree*>routingTree;//Net完成後都會有對應的tree
+
 
 void Init(std::string path,std::string fileName);
 
 
 
+
+
+
+
+inline std::ostream& operator<<(std::ostream&os,pos&p)
+{
+    os<<p.row<<" "<<p.col<<" "<<p.lay;
+    return os;
+}
 int main(int argc, char** argv)
 {
     readLUT();
@@ -140,7 +151,29 @@ int main(int argc, char** argv)
 
     std::cout<<"graph Init done!\n";
 
-    std::cout<<"start to test two-pin-nets gen!\n";
+    std::cout<<"start to test two-pin-nets gen1111!\n";
+
+
+    //同步測試完成
+    // auto &net1 = graph->getNet(1);
+    // std::list<TwoPinNet> net1set;
+    // tree* initTree1 = get_two_pins(net1set,net1);
+    // net1set.front().second->p.lay = 100;
+    // for(auto pins:net1set)
+    //     std::cout<<pins.first->p<<" "<<pins.second->p<<"\n";
+
+    // auto &net2 = graph->getNet(2);
+    // std::list<TwoPinNet> net2set;
+    // tree* initTree2 = get_two_pins(net2set,net2);
+    // net2set.front().second->p.lay = 100;
+    // for(auto pins:net2set)
+    //     std::cout<<pins.first->p<<" "<<pins.second->p<<"\n";
+
+    //待新增destructor (clear all nodes&Inittree) if rip-up failed
+    //待新增
+
+
+
     for(int i = 1;i<=graph->Nets.size();i++){
         //std::cout<<"Net"<<i<<"\n";
         std::list<TwoPinNet> sets;
@@ -148,7 +181,7 @@ int main(int argc, char** argv)
         get_two_pins(sets,net);
         for(auto twopin:sets)
         {
-            //std::cout<<twopin.first->p<<" "<<twopin.second->p<<" \n";
+            std::cout<<twopin.first->p<<" "<<twopin.second->p<<" \n";
         }
     }
     std::cout<<"two-pin-net-done!!\n";
