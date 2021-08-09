@@ -92,10 +92,16 @@ void addingdemand(Ggrid&grid,Net&net)
         Enroll(grid,&net);
     }
 }
-// void RipUPinit(Graph*graph,Net&net)
-// {
-
-// }
+void RipUPinit(Graph*graph,Net&net)
+{
+    int NetId = std::stoi(net.netName.substr(1,-1));
+    auto netTree = graph->getTree(NetId);
+    for(auto grid:netTree->all)
+    {
+        pos p = grid->p;
+        Enroll((*graph)(p.row,p.col,p.lay),&net);
+    }
+}
 void RoutingInit(Graph*graph,Net&net,TwoPinNets&pinset)
 {
     net.routingState = Net::state::routing;
@@ -117,7 +123,6 @@ void RoutingInit(Graph*graph,Net&net,TwoPinNets&pinset)
 
 void SegmentFun(Graph*graph,Net&net,node*v,node*u,void(*f)(Ggrid&,Net&))
 {
-    u->mark = true;
     int sRow = v->p.row;
     int sCol = v->p.col;
     int sLay = v->p.lay;
@@ -139,10 +144,13 @@ void SegmentFun(Graph*graph,Net&net,node*v,node*u,void(*f)(Ggrid&,Net&))
         sCol+=d_c;
         sLay+=d_l;
     }while(sRow!=tRow||sCol!=tCol||sLay!=tLay);
+    auto &grid = (*graph)(sRow,sCol,sLay);
+    f(grid,net);//last
 }
 
 void Dfs_Segment(Graph*graph,Net&net,node*v,void(*f)(Ggrid&,Net&))
 {
+    v->mark = true;
     for(auto u:v->In)
     {
         if(u!=nullptr&&u->mark==false)
@@ -158,14 +166,30 @@ void RipUp(Graph*graph,Net&net,tree*t)
 {
     if(net.routingState==Net::state::unroute)
     {
-        std::cout<<"RipUP warning! "<<net.netName<<" do not allocate any demand on graph!!\n";
+        std::cout<<"RipUP warning! "<<net.netName<<" Net.routing state = unroute, maybe this net does not allocate any demand on graph!!\n";
     }
     else if (net.routingState==Net::state::done)
     {
         for(auto n:t->all)
             n->mark = false;
 
-        for(auto leaf:t->leaf)
+        for(auto leaf:t->leaf){
             Dfs_Segment(graph,net,leaf,removedemand);
+        }
+    }
+}
+void printgrid(Ggrid&g,Net&net)
+{
+    std::cout<<g.row<<" "<<g.col<<" "<<g.lay<<"\n";
+}
+
+void printTree(Graph*graph,Net&net)
+{
+    int NetId = std::stoi(net.netName.substr(1,-1));
+    tree * t = graph->getTree(NetId);
+    for(auto n:t->all)
+        n->mark = false;
+    for(auto leaf:t->leaf){
+        Dfs_Segment(graph,net,leaf,printgrid);
     }
 }

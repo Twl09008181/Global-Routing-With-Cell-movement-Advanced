@@ -28,7 +28,7 @@ struct tree;
 struct node{
     pos p;
     tree * routing_tree = nullptr;
-    node* In[4] = {nullptr};
+    node* In[4] = {nullptr};//In[0] via from down,In[1]:via from up , In[2] negative dir of layer ,In[3] positive dir of layer
     bool IsLeaf = true;
     bool mark = false;//for print segment
     float cost = FLT_MAX;
@@ -49,7 +49,7 @@ using TwoPinNets = std::list<TwoPinNet>;
 void Enroll(Ggrid&grid,Net*net);
 void removedemand(Ggrid&grid,Net&net);
 void addingdemand(Ggrid&grid,Net&net);
-
+void RipUPinit(Graph*graph,Net&net);
 void RoutingInit(Graph*graph,Net&net,TwoPinNets&pinset);
 void SegmentFun(Graph*graph,Net&net,node*v,node*u,void(*f)(Ggrid&,Net&));
 
@@ -57,6 +57,9 @@ void Dfs_Segment(Graph*graph,Net&net,node*v,void(*f)(Ggrid&,Net&));
 
 void RipUp(Graph*graph,Net&net,tree*t);
 
+void printgrid(Ggrid&g,Net&net);
 
+
+void printTree(Graph*graph,Net&net);
 
 #endif

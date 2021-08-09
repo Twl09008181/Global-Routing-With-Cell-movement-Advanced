@@ -121,7 +121,7 @@ float VIA_W = 1;
 
 Graph* graph = nullptr;
 
-std::map<Net*,tree*>routingTree;//Net完成後都會有對應的tree
+void show_demand(Graph&graph);
 
 
 void Init( std::string path,std::string fileName)
@@ -129,10 +129,10 @@ void Init( std::string path,std::string fileName)
     graph = new Graph(path+fileName);
 }
 
-void RipUPinit(Graph&graph,Net&net);//testing :因為現在init routing還沒改成tree,到時候要改成tree的結構Rip up
-void removedemandTesting(Graph&graph,Net&net);//testing :因為現在init routing還沒改成tree,到時候要改成tree的結構Rip up
+//void RipUPinit(Graph&graph,Net&net);//testing :因為現在init routing還沒改成tree,到時候要改成tree的結構Rip up
+// void removedemandTesting(Graph&graph,Net&net);//testing :因為現在init routing還沒改成tree,到時候要改成tree的結構Rip up
 void show_demand(Graph&graph);//for test
-void addingdemandTesting(Graph&graph,Net&net);//testing :因為現在init routing還沒改成tree,到時候要改成tree的結構Rip up
+// void addingdemandTesting(Graph&graph,Net&net);//testing :因為現在init routing還沒改成tree,到時候要改成tree的結構Rip up
 
 
 
@@ -168,21 +168,42 @@ int main(int argc, char** argv)
     //check1 pin要正確lay, pin要跟flute產生的一樣,pseudo 要是-1
 
     
-    show_demand(*graph);
-
-    for(auto net:graph->Nets){
-        RipUPinit(*graph,*net.second);
-        removedemandTesting(*graph,*net.second);
-    }
-    show_demand(*graph);
-
-    for(auto net:graph->Nets){
-        addingdemandTesting(*graph,*net.second);
-    }
+    
 
     show_demand(*graph);
 
+    // for(int i = 1;i<=graph->Nets.size();i++)
+    // {
+    //     tree * t = graph->getTree(i);
+    //     std::cout<<"Net "<<i<<"\n";
+    //     for(node*n:t->leaf)
+    //     {
+    //         std::cout<<"leaf : "<<n->p<<"\n";
 
+    //         for(auto nb:n->In)
+    //         {
+    //             if(nb!=nullptr)
+    //             {
+    //                 std::cout<<nb->p<<" ";
+    //             }
+    //         }
+    //         std::cout<<"\n";
+    //     }
+    // }
+
+    // for(int i = 1;i<=graph->Nets.size();i++){
+    //     auto &net = graph->getNet(i); 
+    //     RipUPinit(graph,net);
+    //     RipUp(graph,net,graph->getTree(i));
+    // }
+
+    // for(int i = 1;i<=graph->Nets.size();i++){
+    //     auto &net = graph->getNet(i); 
+    //     printTree(graph,net);
+    // }
+    
+    //show_demand(*graph);
+    
 
 	return 0;
 }
@@ -220,34 +241,34 @@ void show_demand(Graph&graph)
 }
 
 
-//Call Enroll
-void RipUPinit(Graph&graph,Net&net)//testing :因為現在init routing還沒改成tree,到時候要改成tree的結構Rip up
-{
-    for(auto grid:*net.PassingGrids)
-    {
-        if(grid.second)
-        {
-            Enroll(*grid.first,&net);
-        }
-    }
-}
-void removedemandTesting(Graph&graph,Net&net)//testing :因為現在init routing還沒改成tree,到時候要改成tree的結構Rip up
-{
-    for(auto grid:*net.PassingGrids)
-    {
-        if(grid.second)
-        {
-            removedemand(*grid.first,net);
-        }
-    }
-}
-void addingdemandTesting(Graph&graph,Net&net)
-{
-    for(auto grid:*net.PassingGrids)
-    {
-        if(grid.second)
-        {
-            addingdemand(*grid.first,net);
-        }
-    }
-}
+// //Call Enroll
+// void RipUPinit(Graph&graph,Net&net)//testing :因為現在init routing還沒改成tree,到時候要改成tree的結構Rip up
+// {
+//     for(auto grid:*net.PassingGrids)
+//     {
+//         if(grid.second)
+//         {
+//             Enroll(*grid.first,&net);
+//         }
+//     }
+// }
+// void removedemandTesting(Graph&graph,Net&net)//testing :因為現在init routing還沒改成tree,到時候要改成tree的結構Rip up
+// {
+//     for(auto grid:*net.PassingGrids)
+//     {
+//         if(grid.second)
+//         {
+//             removedemand(*grid.first,net);
+//         }
+//     }
+// }
+// void addingdemandTesting(Graph&graph,Net&net)
+// {
+//     for(auto grid:*net.PassingGrids)
+//     {
+//         if(grid.second)
+//         {
+//             addingdemand(*grid.first,net);
+//         }
+//     }
+// }

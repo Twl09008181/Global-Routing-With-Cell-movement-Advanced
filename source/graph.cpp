@@ -2,7 +2,7 @@
 #include "../header/Routing.hpp"
 
 
-
+void AddingInitRouting(Graph*graph,node*p1,node*p2,int netId);
 //------------------------------------------------------Destructor-------------------------------------------------------------
 Graph::~Graph(){}
 
@@ -125,15 +125,66 @@ void Graph::parser(std::string fileName){
     }
     //------------------------------------------------------Initial Routing------------------------------------------------------------
     is >> type >> value;
+    routingTree.resize(Nets.size());
+    for(int i = 0;i<routingTree.size();i++)
+    {
+        routingTree.at(i) = new tree;
+    }
+    std::vector<std::map<std::string,node*>>pins;
+
+    pins.resize(Nets.size());
+    auto searchnode = [&pins,this](int r,int c,int l,int netId)
+    {
+        std::string pos3d= std::to_string(r)+","+std::to_string(c)+","+std::to_string(l);
+        auto&netnodes = pins.at(netId-1);
+        auto nettree = this->getTree(netId);
+        if(netnodes.find(pos3d)==netnodes.end())
+        {
+            node* n = new node();
+            n->p = pos{r,c,l};
+            netnodes.insert({pos3d,n});
+            nettree->all.push_front(n);
+            n->routing_tree = nettree;
+            return n;
+        }
+        else
+        {
+            return netnodes[pos3d];
+        }
+    };
     for(int i=0;i<value;++i){
         int r1,c1,l1;
         int r2,c2,l2;
         is >> r1 >> c1 >> l1 >> r2 >> c2 >> l2 >>type;
         int NetId = std::stoi(std::string(type.begin()+1,type.end()));
-        Ggrid& g1 = (*this)(r1,c1,l1);
-        Ggrid& g2 = (*this)(r2,c2,l2);
-        add_segment_3D(g1, g2 ,*this,NetId);
+        node*p1 = searchnode(r1,c1,l1,NetId);
+        node*p2 = searchnode(r2,c2,l2,NetId);
+        AddingInitRouting(this,p1,p2,NetId);
     }
+    for(int i = 1;i<=Nets.size();i++)
+    {
+        auto &net = this->getNet(i);
+        net.routingState = Net::state::done;
+    }
+    //LEAF node..
+    for(int i = 1;i<=Nets.size();i++)
+    {
+        for(auto n:this->getTree(i)->all)
+        {
+            int nonNullnb = 0;
+            for(auto input:n->In)
+            {
+                if(input)
+                    nonNullnb++;
+            }
+            if(nonNullnb==1)
+            {
+                this->getTree(i)->leaf.push_front(n);
+                n->IsLeaf = true;
+            }
+        }
+    }
+ 
     //------------------------------------------------------NumVoltageAreas------------------------------------------------------------
     is >> type >> value;
     voltageAreas.resize(value);
@@ -280,4 +331,28 @@ void Graph::placementInit(){
 			if(gain >= 0) candiPq.push({gain, stoi(p.first.substr(1)), i });
 		}
 	}
+}
+
+
+
+void AddingInitRouting(Graph*graph,node*p1,node*p2,int netId)
+{   
+    p1->IsLeaf = false;
+    pos pos1 = p1->p;
+    pos pos2 = p2->p;
+    //要添加In 方向.....
+    if(pos1.lay!=pos2.lay){
+        (pos2.lay>pos1.lay)? (p2->In[0] = p1) : (p2->In[1] = p1);
+    }
+    else if(pos1.col!=pos2.col)
+    {
+        (pos2.col>pos1.col)? (p2->In[2] = p1) : (p2->In[3] = p1);
+    }    
+    else if(pos1.row!=pos2.row)
+    {
+        (pos2.row>pos1.row)? (p2->In[2] = p1) : (p2->In[3] = p1);
+    }
+    auto &net = graph->getNet(netId);
+    net.routingState = Net::state::routing;
+    SegmentFun(graph,net,p1,p2,addingdemand);
 }

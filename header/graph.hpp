@@ -8,7 +8,8 @@
 //---------------------------------------------dataStructures---------------------------------------------------
 #include <unordered_map>
 #include "data_structure.hpp"
-
+struct tree;
+struct node;
 class Graph{
 public:
     Graph(std::string fileName);
@@ -63,6 +64,15 @@ public:
         std::string Key = "N" + std::to_string(NetId);
         return *Nets[Key];
     }
+    tree* getTree(int NetId)
+    {
+        if(NetId<1||NetId>Nets.size())
+        {
+            std::cout<<"Net& getNet(int NetId) input Error: 1<=NetId<="<<Nets.size()<<"\n";
+            exit(1);
+        }
+        return routingTree.at(NetId-1);
+    }
     Layer& getLay(int Lay){
         return Layers.at(Lay-1);
     }
@@ -91,6 +101,11 @@ private:
     int RowEnd,ColEnd;
 
 	std::priority_queue< std::tuple<int, int, int>> candiPq;
+
+
+//---------------------------------------------RoutingTree-------------------------------------------------------------
+public:
+    std::vector<tree*>routingTree;
 };
 
 
