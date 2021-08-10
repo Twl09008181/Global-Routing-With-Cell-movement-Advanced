@@ -76,15 +76,9 @@ public:
     Layer& getLay(int Lay){
         return Layers.at(Lay-1);
     }
-    // void DoneReroute();
-    // bool RipUpDemand(Net&net);
-    // bool RecoverDemand(Net&net);
-	// void PinsInit(Net&net);
-    // void PinsRemov(Net&net);
 	void showEffectedNetSize();
 	CellInst* cellMoving();
 	void placementInit();
-    // int get_two_pins(std::vector<std::pair<Net::point,Net::point>>& two_pin_nets,Net&net);
 //--------------------------------------------Data Mmeber------------------------------------------------------------
     std::unordered_map<std::string,MasterCell*>mCell;
     std::unordered_map<std::string,CellInst*>CellInsts;

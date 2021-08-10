@@ -105,8 +105,8 @@ struct Net{
     //記下CellInst*是為了以後移動可以得到更新的座標 x,y
     //std::string代表Pin的name,用來CellInst內查找Pin
     std::vector<PIN> net_pins;
-    enum class  state {unroute,routing,done}; //for rip-up
-    state routingState = state::unroute;
+    enum class  state {RipUpinit,Adding,doneRipUP,doneAdd}; //for rip-up
+    state routingState = state::doneAdd;
 
 
     bool RerouteFlag = false;

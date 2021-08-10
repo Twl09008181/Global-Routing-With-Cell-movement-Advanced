@@ -68,49 +68,165 @@ std::pair<bool,bool> CanRout(int row,int col,int lay,Graph&graph,int NetId)
 }
 
 
-
-
-
-
-void Enroll(Ggrid&grid,Net*net)
+//-------------------------------------------------node Member function-----------------------------------------------------------
+bool node::IsLeaf()
 {
-    grid.enrollNet = net;
+    for(int i = 0;i<4;i++)
+        if(Out[i])return false;
+    return true;
 }
-void removedemand(Ggrid&grid,Net&net)
+bool node::IsSingle()//no In and no Out
 {
-    if(grid.enrollNet==&net)
+    for(int i = 0;i<4;i++)
+        if(In[i])return false;
+    return this->IsLeaf();
+}
+
+void node::unregister(node*host)
+{
+    for(int i = 0;i<4;i++)
+    {
+        if(Out[i]==host){
+            Out[i] = nullptr;
+            host->In[i] = nullptr;
+        }
+    }
+}
+
+void node::connect(node *host)
+{
+    
+    pos p_host = host->p;
+    if(p.lay!=p_host.lay)
+    {
+        
+        if(p_host.lay > p.lay)
+        {
+            node * oldclient = host->In[0];
+            if(!oldclient||p.lay < oldclient->p.lay ){//updating downstream
+                if(oldclient)
+                    oldclient->unregister(host);
+                host->In[0] = this;
+                Out[0] = host;
+            }
+        }
+        else{
+            node * oldclient = host->In[1];
+            if(!oldclient||p.lay > oldclient->p.lay ){//updating upstream
+                if(oldclient)
+                    oldclient->unregister(host);
+                host->In[1] = this;
+                Out[1] = host;
+            }
+        }
+    }
+
+    else if(p.col!=p_host.col)
+    {
+        if(p_host.col > p.col)
+        {
+            node * oldclient = host->In[2];
+            if(!oldclient||p.col < oldclient->p.col ){//updating downstream
+                if(oldclient)
+                    oldclient->unregister(host);
+                host->In[2] = this;
+                Out[2] = host;
+            }
+        }
+        else{
+            node * oldclient = host->In[3];
+            if(!oldclient||p.col > oldclient->p.col ){//updating upstream
+                if(oldclient)
+                    oldclient->unregister(host);
+                host->In[3] = this;
+                Out[3] = host;
+            }
+        }
+    }
+
+    else if(p.row!=p_host.row)
+    {
+        if(p_host.row > p.row)
+        {
+            node * oldclient = host->In[2];
+            if(!oldclient||p.row < oldclient->p.row ){//updating downstream
+                if(oldclient)
+                    oldclient->unregister(host);
+                host->In[2] = this;
+                Out[2] = host;
+            }
+        }
+        else{
+            node * oldclient = host->In[3];
+            if(!oldclient||p.row > oldclient->p.row ){//updating upstream
+                if(oldclient)
+                    oldclient->unregister(host);
+                host->In[3] = this;
+                Out[3] = host;
+            }
+        }
+    }
+        
+}
+
+//-------------------------------------------------node Member function-----------------------------------------------------------
+
+
+
+
+//-------------------------------------------------callback functions------------------------------------------------------------
+//format void(f)(Ggrid&,Net*)
+
+void Enroll(Ggrid&g,Net*net){
+    
+    if(g.enrollNet==nullptr||g.enrollNet==net||net==nullptr)
+        g.enrollNet = net;
+    else if(net){
+        std::cerr<<net->netName<<" error in Enroll, find Ggrid :"<<g.row<<" "<<g.col<<" "<<g.lay<<" is already enrolled by net:"<<g.enrollNet->netName<<"\n";
+        exit(1);
+    }
+}
+void Unregister(Ggrid&g,Net*net)
+{
+    if(g.enrollNet==net||g.enrollNet==nullptr)
+        Enroll(g,nullptr);
+
+    else if(net)
+    {
+        std::cerr<<net->netName<<" error in Unregister, find Ggrid :"<<g.row<<" "<<g.col<<" "<<g.lay<<" is not enrolled by net:"<<net->netName<<"\n";
+        exit(1);
+    }
+}
+void removedemand(Ggrid&grid,Net*net)
+{
+    if(grid.enrollNet==net)
     {
         grid.delete_demand();
         Enroll(grid,nullptr);
     }
 }
-void addingdemand(Ggrid&grid,Net&net)
+void addingdemand(Ggrid&grid,Net*net)
 {
-    if(grid.enrollNet!=&net)
+    if(grid.enrollNet!=net)
     {
         grid.add_demand();
-        Enroll(grid,&net);
+        Enroll(grid,net);
     }
 }
-void RipUPinit(Graph*graph,Net&net)
+//-------------------------------------------------callback functions------------------------------------------------------------
+
+
+
+//--------------------------------------------------two-pin-sets function---------------------------------------------------
+void RoutingInit(Graph*graph,Net*net,TwoPinNets&pinset)
 {
-    int NetId = std::stoi(net.netName.substr(1,-1));
-    auto netTree = graph->getTree(NetId);
-    for(auto grid:netTree->all)
-    {
-        pos p = grid->p;
-        Enroll((*graph)(p.row,p.col,p.lay),&net);
-    }
-}
-void RoutingInit(Graph*graph,Net&net,TwoPinNets&pinset)
-{
-    net.routingState = Net::state::routing;
+    net->routingState = Net::state::Adding;
     for(auto &twopin:pinset)
     {
         pos pin1 = twopin.first->p;
         pos pin2 = twopin.second->p;
 
-        if(pin1.row==pin2.row&&pin1.col==pin2.col)
+        if(pin1.row!=pin2.row||pin1.col!=pin2.col||pin1.lay!=pin2.lay)
         {
             SegmentFun(graph,net,twopin.first,twopin.second,addingdemand);
         }
@@ -121,7 +237,10 @@ void RoutingInit(Graph*graph,Net&net,TwoPinNets&pinset)
     }
 }
 
-void SegmentFun(Graph*graph,Net&net,node*v,node*u,void(*f)(Ggrid&,Net&))
+
+
+//--------------------------------------------------------DFS------------------------------------------------------------------
+void SegmentFun(Graph*graph,Net*net,node*v,node*u,void(*f)(Ggrid&,Net*))
 {
     int sRow = v->p.row;
     int sCol = v->p.col;
@@ -148,87 +267,145 @@ void SegmentFun(Graph*graph,Net&net,node*v,node*u,void(*f)(Ggrid&,Net&))
     f(grid,net);//last
 }
 
-void Dfs_Segment(Graph*graph,Net&net,node*v,void(*f)(Ggrid&,Net&))
+void Dfs_Segment(Graph*graph,Net*net,node*v,void(*f)(Ggrid&,Net*))
 {
-    v->mark = true;
-    for(auto u:v->In)
+    for(int i = 0;i<4;i++)
     {
-        if(u!=nullptr&&u->mark==false)
+        node* u = v->In[i];
+        if(u!=nullptr)
         {
-            u->mark = true;
+            v->In[i] = nullptr;//edge dfs
             SegmentFun(graph,net,v,u,f);
             Dfs_Segment(graph,net,u,f);
         }
     }
 }
 
-void RipUp(Graph*graph,Net&net,tree*t)
-{
-    if(net.routingState==Net::state::unroute)
-    {
-        std::cout<<"RipUP warning! "<<net.netName<<" Net.routing state = unroute, maybe this net does not allocate any demand on graph!!\n";
-    }
-    else if (net.routingState==Net::state::done)
-    {
 
-        for(auto n:t->all)
-            n->mark = false;
-            
-        for(auto leaf:t->leaf){
-            leaf->mark = true;
-            Dfs_Segment(graph,net,leaf,removedemand);
-        }
+
+//Edge dfs tool 
+InStorage getStorage(tree*nettree)
+{
+    InStorage storage;
+    storage.reserve(nettree->leaf.size());
+    for(auto n:nettree->all){
+        In In_Info = new node* [4];
+        In_Info[0] = n->In[0];
+        In_Info[1] = n->In[1];
+        In_Info[2] = n->In[2];
+        In_Info[3] = n->In[3];
+        storage.push_back(In_Info);
+    }
+    return storage;
+}
+void RecoverIn(tree*nettree,InStorage&storage)
+{
+    int i = 0;
+    for(auto n:nettree->all){
+        for(int j = 0;j<4;j++)
+            n->In[j] = storage.at(i)[j];
+        delete [] storage.at(i);
+        i++;
     }
 }
-void printgrid(Ggrid&g,Net&net)
+
+
+
+
+//------------------------------------------------Demand Interface------------------------------------------------------------------------
+
+
+struct DemandPar
 {
-    std::cout<<g.row<<" "<<g.col<<" "<<g.lay<<"\n";
-}
-void Unregister(Ggrid&g,Net&net)
+    std::string warning;//warning
+    Net::state Stating[2];//[0]:invalid state , [1] :valid state , [2]: change state
+    void (*callback)(Ggrid&,Net*);
+};
+
+void DemandInterface(Graph*graph,Net*net,const std::string &operation)
 {
-    if(g.enrollNet!=&net)
+    DemandPar par;
+    if(operation=="RipUPinit")
     {
-        std::cerr<<"error in Unregister, find some grid :"<<g.row<<" "<<g.col<<" "<<g.lay<<" is not enrolled by net:"<<net.netName<<"\n";
+        par.callback = Enroll;
+        par.Stating[0] = Net::state::doneAdd;
+        par.Stating[1] = Net::state::RipUpinit;
+        par.warning    = "Warning : Net.routing state must be  Net::state::doneAdd!!\n";
+    }
+    else if (operation=="RipUP")
+    {
+        par.callback = removedemand;
+        par.Stating[0] = Net::state::RipUpinit;
+        par.Stating[1] = Net::state::doneRipUP;
+        par.warning    = "Warning : Net.routing state must be  Net::state::RipUPInit!!\n";
+    }
+    else if(operation=="Adding")
+    {
+        par.callback = addingdemand;
+        par.Stating[0] = Net::state::doneAdd;//AddingDone or 
+        par.Stating[1] = Net::state::Adding;
+        par.warning    = " Warning : Net.routing state must be  Net::state::DoneAdd!!\n";
+    }
+    else if (operation=="doneAdd")
+    {
+        par.callback = Unregister;
+        par.Stating[0] = Net::state::Adding;
+        par.Stating[1] = Net::state::doneAdd;
+        par.warning    = " Warning : Net.routing state must be  Net::state::Adding!!\n";
+    }
+    else{
+        std::cerr<<"Demand interface error!! unKnown op:"<<operation<<"\n";
         exit(1);
-        Enroll(g,nullptr);
     }
-}
 
-void printTree(Graph*graph,Net&net)
-{
-    int NetId = std::stoi(net.netName.substr(1,-1));
-    tree * t = graph->getTree(NetId);
-    for(auto n:t->all)
-        n->mark = false;
-    for(auto leaf:t->leaf){
-        Dfs_Segment(graph,net,leaf,printgrid);
-    }
-}
-
-void InitAddingDemand(Graph*graph,Net&net,tree*t)
-{
-    if(net.routingState==Net::state::done)
-    {
-        std::cout<<"InitAddingDemand warning! "<<net.netName<<" Net.routing state = done, this net may allocate duplicate times!!\n";
-    }
-    else if (net.routingState==Net::state::routing)
-    {
-        //std::cout<<net.netName<<"\n";
-        for(auto n:t->all)
-            n->mark = false;
-
+    //-----core code
+    tree *t = graph->getTree(std::stoi(net->netName.substr(1,-1)));
+    if(net->routingState!=par.Stating[0]){std::cerr<<net->netName<<par.warning;}
+    else{
+        InStorage storage = getStorage(t);
         for(auto leaf:t->leaf){
-            leaf->mark = true;
-            Dfs_Segment(graph,net,leaf,addingdemand);
+            if(leaf->IsSingle())
+                par.callback((*graph)(leaf->p.row,leaf->p.col,leaf->p.lay),net);
+            else
+                Dfs_Segment(graph,net,leaf,par.callback);
+        }
+        RecoverIn(t,storage);
+    }
+    net->routingState = par.Stating[1];
+}
+
+
+
+//Output interface---------------------
+void printTreedfs(node*v,std::vector<std::string>*segment)
+{
+    for(int i = 0;i<4;i++)
+    {
+        node* u = v->In[i];
+        if(u!=nullptr)
+        {
+            v->In[i] = nullptr;//edge dfs
+            std::string posv = pos2str(v->p);
+            std::string posu = pos2str(u->p);
+            if(segment){segment->push_back(posu+" "+posv);}
+            else{std::cout<<(posu+" "+posv)<<"\n";}
+            printTreedfs(u,segment);
         }
     }
 }
 
-void doneAddingDemand(Graph*graph,Net&net,tree*t)
+void printTree(Graph*graph,Net*net,std::vector<std::string>*segment)
 {
-    for(auto n:t->all)
-        n->mark = false;
+    int NetId = std::stoi(net->netName.substr(1,-1));
+    tree * t = graph->getTree(NetId);
+
+    //dfs init
+    InStorage storage = getStorage(t);
+
+    //dfs
     for(auto leaf:t->leaf){
-        Dfs_Segment(graph,net,leaf,Unregister);
+        printTreedfs(leaf,segment);
     }
+    //recover
+    RecoverIn(t,storage);
 }
