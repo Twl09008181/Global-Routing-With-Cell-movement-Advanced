@@ -191,18 +191,19 @@ int main(int argc, char** argv)
     //     }
     // }
 
-    // for(int i = 1;i<=graph->Nets.size();i++){
-    //     auto &net = graph->getNet(i); 
-    //     RipUPinit(graph,net);
-    //     RipUp(graph,net,graph->getTree(i));
-    // }
+    for(int i = 1;i<=graph->Nets.size();i++){
+        auto &net = graph->getNet(i); 
+        net.routingState = Net::state::done;
+        RipUPinit(graph,net);
+        RipUp(graph,net,graph->getTree(i));
+    }
 
     // for(int i = 1;i<=graph->Nets.size();i++){
     //     auto &net = graph->getNet(i); 
     //     printTree(graph,net);
     // }
     
-    //show_demand(*graph);
+    show_demand(*graph);
     
 
 	return 0;

@@ -2,7 +2,7 @@
 #include "../header/Routing.hpp"
 
 
-void AddingInitRouting(Graph*graph,node*p1,node*p2,int netId);
+void InitRoutingTree(Graph*graph,node*p1,node*p2,int netId);
 //------------------------------------------------------Destructor-------------------------------------------------------------
 Graph::~Graph(){}
 
@@ -120,15 +120,20 @@ void Graph::parser(std::string fileName){
         for (auto blkg:c->mCell->blkgs)//blkg is string : value type
         {
             MasterCell::Blkg b = blkg.second;
-            (*this)(row,col,b.first).demand += b.second;
+            //(*this)(row,col,b.first).demand += b.second;
         }
     }
     //------------------------------------------------------Initial Routing------------------------------------------------------------
     is >> type >> value;
-    routingTree.resize(Nets.size());
-    for(int i = 0;i<routingTree.size();i++)
+    routingTree.reserve(Nets.size());
+    for(int i = 1;i<=Nets.size();i++)
     {
-        routingTree.at(i) = new tree;
+        routingTree.push_back(new tree);
+        if(this->getTree(i)==nullptr)
+        {
+            std::cerr<<"error!!\n";
+            exit(1);
+        }
     }
     std::vector<std::map<std::string,node*>>pins;
 
@@ -152,38 +157,130 @@ void Graph::parser(std::string fileName){
             return netnodes[pos3d];
         }
     };
+
+    //------------------------------------------------------------------------Testing Single grid pins-------------------------------------------------------
+    //先把pin都記錄下來
+    for(int i = 1;i<=Nets.size();i++)
+    {
+        auto &net = this->getNet(i);
+        for(auto realpins:net.net_pins)
+        {
+            int r = realpins.first->row;
+            int c = realpins.first->col;
+            int l = realpins.first->mCell->pins[realpins.second];
+            searchnode(r,c,l,i);
+        }
+    }
+    std::vector<std::set<std::string>>SegmentPin;
+    SegmentPin.resize(Nets.size());
     for(int i=0;i<value;++i){
         int r1,c1,l1;
         int r2,c2,l2;
         is >> r1 >> c1 >> l1 >> r2 >> c2 >> l2 >>type;
         int NetId = std::stoi(std::string(type.begin()+1,type.end()));
+
+        //for testing single pin.----------------------------------
+        std::string pos3d = std::to_string(r1)+","+std::to_string(c1)+","+std::to_string(l1);
+        SegmentPin.at(NetId-1).insert(pos3d);
+        pos3d = std::to_string(r2)+","+std::to_string(c2)+","+std::to_string(l2);
+        SegmentPin.at(NetId-1).insert(pos3d);
+        //for testing single pin.----------------------------------
+
         node*p1 = searchnode(r1,c1,l1,NetId);
         node*p2 = searchnode(r2,c2,l2,NetId);
-        AddingInitRouting(this,p1,p2,NetId);
+        InitRoutingTree(this,p1,p2,NetId);
     }
+
+    //此時會擁有single grid pin,就是leaf當中(leaf代表沒有指向別人) 沒有In的node
+    std::vector<std::vector<std::string>>SingleGridPin;
+    SingleGridPin.resize(Nets.size());
     for(int i = 1;i<=Nets.size();i++)
     {
-        auto &net = this->getNet(i);
-        net.routingState = Net::state::done;
+        // std::cout<<"Net : "<<i<<"\n";
+        for(auto n:this->getTree(i)->all)
+        {
+            int count = 0;
+            for(auto in:n->In)
+            {
+                if(in)
+                    count++;
+            }
+            if(n->IsLeaf==true&&count==0)
+            {
+                //std::cout<<n->p<<" is single grid pin!\n";
+                std::string pos3d = std::to_string(n->p.row)+","+std::to_string(n->p.col)+","+std::to_string(n->p.lay);
+                SingleGridPin.at(i-1).push_back(pos3d);
+            }
+        }
     }
+
+    //讀取benchmark當中的pin
+    //std::cout<<"reading bmark pin :\n";
+    std::vector<std::map<std::string,bool>>benckMarkSinglePins;
+    benckMarkSinglePins.resize(Nets.size());
+    for(int i = 1;i<=Nets.size();i++)
+    {
+        //std::cout<<"Net"<<i<<"\n";
+        auto &net = this->getNet(i);
+        for(auto pin:net.net_pins)
+        {
+            CellInst * C = pin.first;
+            int r =C->row;int c = C->col;int l = C->mCell->pins[pin.second];
+            std::string pos3d = std::to_string(r)+","+std::to_string(c)+","+std::to_string(l);
+            //std::cout<<pos3d<<"\n";
+
+            if(SegmentPin.at(i-1).find(pos3d)==SegmentPin.at(i-1).end()&&benckMarkSinglePins.at(i-1).find(pos3d)==benckMarkSinglePins.at(i-1).end())
+            {
+                benckMarkSinglePins.at(i-1).insert({pos3d,false});
+            }
+        }
+    }
+
+    for(int i = 1;i<=Nets.size();i++)
+    {
+        //std::cout<<"Net"<<i<<"\n";
+        for(auto singlepin : SingleGridPin.at(i-1))
+        {
+            if(benckMarkSinglePins.at(i-1).find(singlepin)==benckMarkSinglePins.at(i-1).end())
+            {
+                std::cerr<<"error !\n";
+                exit(1);
+            }
+
+            benckMarkSinglePins.at(i-1)[singlepin]=true;
+        }
+        
+        for(auto benchsinglepin : benckMarkSinglePins.at(i-1))
+        {
+            if(benchsinglepin.second==false)
+            {
+                std::cout<<"error!"<<benchsinglepin.first<<"\n";
+                exit(1);
+            }
+        }
+    }
+
+    //------------------------------------------------------------------------Testing Single grid pins-------------------------------------------------------
+
+
     //LEAF node..
     for(int i = 1;i<=Nets.size();i++)
     {
         for(auto n:this->getTree(i)->all)
         {
-            int nonNullnb = 0;
-            for(auto input:n->In)
-            {
-                if(input)
-                    nonNullnb++;
-            }
-            if(nonNullnb==1)
-            {
-                this->getTree(i)->leaf.push_front(n);
-                n->IsLeaf = true;
-            }
+            if(n->IsLeaf==true)
+                this->getTree(i)->leaf.push_back(n);
         }
     }
+    for(int i = 1;i<=Nets.size();i++)
+    {
+        auto &net = this->getNet(i);
+        net.routingState = Net::state::routing;
+        InitAddingDemand(this,net,this->getTree(i));
+        net.routingState = Net::state::done;
+        //doneAddingDemand(this,net,this->getTree(i));
+    }
+    
  
     //------------------------------------------------------NumVoltageAreas------------------------------------------------------------
     is >> type >> value;
@@ -335,9 +432,9 @@ void Graph::placementInit(){
 
 
 
-void AddingInitRouting(Graph*graph,node*p1,node*p2,int netId)
+void InitRoutingTree(Graph*graph,node*p1,node*p2,int netId)
 {   
-    p1->IsLeaf = false;
+    p1->IsLeaf = false;//有outdegree就不是leaf
     pos pos1 = p1->p;
     pos pos2 = p2->p;
     //要添加In 方向.....
@@ -352,7 +449,5 @@ void AddingInitRouting(Graph*graph,node*p1,node*p2,int netId)
     {
         (pos2.row>pos1.row)? (p2->In[2] = p1) : (p2->In[3] = p1);
     }
-    auto &net = graph->getNet(netId);
-    net.routingState = Net::state::routing;
-    SegmentFun(graph,net,p1,p2,addingdemand);
 }
+

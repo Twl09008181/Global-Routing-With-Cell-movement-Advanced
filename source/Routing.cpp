@@ -170,10 +170,12 @@ void RipUp(Graph*graph,Net&net,tree*t)
     }
     else if (net.routingState==Net::state::done)
     {
+
         for(auto n:t->all)
             n->mark = false;
-
+            
         for(auto leaf:t->leaf){
+            leaf->mark = true;
             Dfs_Segment(graph,net,leaf,removedemand);
         }
     }
@@ -181,6 +183,15 @@ void RipUp(Graph*graph,Net&net,tree*t)
 void printgrid(Ggrid&g,Net&net)
 {
     std::cout<<g.row<<" "<<g.col<<" "<<g.lay<<"\n";
+}
+void Unregister(Ggrid&g,Net&net)
+{
+    if(g.enrollNet!=&net)
+    {
+        std::cerr<<"error in Unregister, find some grid :"<<g.row<<" "<<g.col<<" "<<g.lay<<" is not enrolled by net:"<<net.netName<<"\n";
+        exit(1);
+        Enroll(g,nullptr);
+    }
 }
 
 void printTree(Graph*graph,Net&net)
@@ -191,5 +202,33 @@ void printTree(Graph*graph,Net&net)
         n->mark = false;
     for(auto leaf:t->leaf){
         Dfs_Segment(graph,net,leaf,printgrid);
+    }
+}
+
+void InitAddingDemand(Graph*graph,Net&net,tree*t)
+{
+    if(net.routingState==Net::state::done)
+    {
+        std::cout<<"InitAddingDemand warning! "<<net.netName<<" Net.routing state = done, this net may allocate duplicate times!!\n";
+    }
+    else if (net.routingState==Net::state::routing)
+    {
+        //std::cout<<net.netName<<"\n";
+        for(auto n:t->all)
+            n->mark = false;
+
+        for(auto leaf:t->leaf){
+            leaf->mark = true;
+            Dfs_Segment(graph,net,leaf,addingdemand);
+        }
+    }
+}
+
+void doneAddingDemand(Graph*graph,Net&net,tree*t)
+{
+    for(auto n:t->all)
+        n->mark = false;
+    for(auto leaf:t->leaf){
+        Dfs_Segment(graph,net,leaf,Unregister);
     }
 }

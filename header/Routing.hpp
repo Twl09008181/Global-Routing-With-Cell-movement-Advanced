@@ -56,7 +56,8 @@ void SegmentFun(Graph*graph,Net&net,node*v,node*u,void(*f)(Ggrid&,Net&));
 void Dfs_Segment(Graph*graph,Net&net,node*v,void(*f)(Ggrid&,Net&));
 
 void RipUp(Graph*graph,Net&net,tree*t);
-
+void InitAddingDemand(Graph*graph,Net&net,tree*t);
+void doneAddingDemand(Graph*graph,Net&net,tree*t);
 void printgrid(Ggrid&g,Net&net);
 
 
