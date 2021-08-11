@@ -78,8 +78,11 @@ void MultiLayerPoint(node*pin,std::map<std::string,std::set<int>>&PointMap,TwoPi
                         exit(1);
                     }
                     n->p = pos{pin->p.row,pin->p.col,last};
-                    n->routing_tree = pin->routing_tree;
-                    n->routing_tree->all.push_back(n);
+
+                    pin->routing_tree->addNode(n);
+                    // n->routing_tree = pin->routing_tree;
+                    // n->routing_tree->all.push_back(n);
+                    // n->routing_tree->leaf.insert(n);
                 }
                 else{
                     n = pin;//for single grid pin
@@ -99,9 +102,9 @@ void treeInit(std::map<std::string,node*>&pins,std::map<std::string,std::set<int
     {
         auto pin = p.second;
         std::string position2d = p.first;
-        pin->routing_tree = new tree();//Init Tree
-        if(pin->routing_tree==nullptr){std::cerr<<"treeInit allocate error!!\n";exit(1);}
-        pin->routing_tree->all.push_back(pin);
+        tree * nettree = new tree();
+        if(nettree==nullptr){std::cerr<<"treeInit allocate error!!\n";exit(1);}
+        nettree->addNode(pin);
         MultiLayerPoint(pin,PointMap,two_pin_nets);
     }
 }

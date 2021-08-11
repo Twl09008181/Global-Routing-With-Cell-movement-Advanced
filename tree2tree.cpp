@@ -143,7 +143,8 @@ int main(int argc, char** argv)
     Init(path,fileName);    
 
     std::cout<<"graph Init done!\n";
-    
+    std::cout<<"Inital routing demand:\n";
+    show_demand(graph);
     RoutingSchedule(graph);
 
 
@@ -155,7 +156,7 @@ int main(int argc, char** argv)
 //routing interface必須有 繞線失敗就 recover demand 的功能
 tree* Tree2Tree(Graph*graph,Net*net,tree*t1,tree*t2)
 {
-    bool success = false;//設定false來測試Reroute的記憶體釋放功能
+    bool success = false;//設定false來測試Rip up機制
     
 
 
@@ -181,43 +182,40 @@ tree* Tree2Tree(Graph*graph,Net*net,tree*t1,tree*t2)
         //combine leaf node of t2 to t1 
         //combine all node of t2 to t1 
         
+        //t2.leaf.clear()
+        //t2.all.clear()
         return t1;
     }
-    else {//Rip up two-pin-nets造成的demand  (由tree interface dfs)
-
-    
-        //TreeInterface(graph)//要寫一個新的interface for tree 而非整條net 原本的應該改為NetInterface
-        //tree Interface的net.state要重新設計......
-
-        //Tree Ripup ......
+    else {
         return nullptr;
     }
         
 }
-tree* Reroute(Graph*graph,Net*net,TwoPinNets&twopins)
+std::pair<tree*,bool> Reroute(Graph*graph,Net*net,TwoPinNets&twopins)
 {
-    TwoPinNetsInit(graph,net,twopins);//Init
+    int initdemand = TwoPinNetsInit(graph,net,twopins);//Init
     tree*T= nullptr;
     for(auto pins:twopins)
     {
         T = Tree2Tree(graph,net,pins.first->routing_tree,pins.second->routing_tree);
-        //free twopins (recover demand由Tree2Tree完成)
-        if(!T) 
+        if(!T) //把整個two-pin nets 繞線產生出來的tree全部collect成一棵回傳
         {
-            std::set<node*>collect;//set(避免duplicate delete)
+            std::set<tree*>collect;//set(避免duplicate delete)
             for(auto pins:twopins)
             {
-                collect.insert(pins.first);
-                collect.insert(pins.second);
+                collect.insert(pins.first->routing_tree);
+                collect.insert(pins.second->routing_tree);
             }
             tree* CollectTree = new tree;
-            for(auto pin:collect)
-                CollectTree->all.push_front(pin);
-            delete CollectTree;
-            return nullptr;
+            for(tree* t:collect)
+            {
+                for(node * pin : t->leaf){CollectTree->leaf.insert(pin);}//for rip-up
+                for(node * pin : t->all){CollectTree->all.push_front(pin);}//for delete
+            }
+            return {CollectTree,false};
         }
     }
-    return T;
+    return {T,true};
 }
 
 void RoutingSchedule(Graph*graph)
@@ -227,22 +225,25 @@ void RoutingSchedule(Graph*graph)
     CellInst* movCell;
     int mov = 0;
     int success = 0;
-    while( (movCell = graph->cellMoving()))
+    while( (movCell = graph->cellMoving()))//到時候可改多個Cell移動後再reroute,就把net用set收集後再一起reroute
     {
         mov++;
         bool movingsuccess = true;
         std::vector<tree*>netTrees(movCell->nets.size(),nullptr);
 
         //Reroute all net related to this Cell
+        int lastFaileIdx = 0;
         for(int i = 0;i<movCell->nets.size();i++)
         {
             auto net = movCell->nets.at(i); 
             RipUpNet(graph,net);
             TwoPinNets twopins;
             get_two_pins(twopins,*net);
-            netTrees.at(i) = Reroute(graph,net,twopins);
-            if(netTrees.at(i)==nullptr)
+            auto result = Reroute(graph,net,twopins);
+            netTrees.at(i) = result.first;
+            if(result.second==false)
             {
+                lastFaileIdx = i;
                 movingsuccess = false;
                 break;
             }
@@ -257,13 +258,23 @@ void RoutingSchedule(Graph*graph)
             success++;
         }
         else{///failed recover old tree demand
-            for(int i = 0;i<movCell->nets.size();i++)
+
+            //RipUp 這次繞線
+            for(int i = 0;i<=lastFaileIdx;i++)
+            {
+                auto &net = movCell->nets.at(i);
+                RipUpNet(graph,net,netTrees.at(i));//recover demand
+            }
+
+            for(int i = 0;i<=lastFaileIdx;i++){delete netTrees.at(i);}//delete 
+
+            //重新復原demand
+            for(int i = 0;i<=lastFaileIdx;i++)
             {
                 auto &net = movCell->nets.at(i);
                 AddingNet(graph,net);//recover demand
             }
         }
-        break;
     }
     std::cout<<"final demand:\n";
     show_demand(graph);

@@ -89,16 +89,9 @@ struct Ggrid{
 
 struct Net{
     std::string netName;//<netName>
-    Net(std::ifstream&is,std::unordered_map<std::string,CellInst*>&CellInsts,std::unordered_map<std::string,Net*>&Nets);//到時候移除
-    bool AlreadyPass(Ggrid&grid){return (PassingGrids->find(&grid) != PassingGrids->end()) && ( (*PassingGrids)[&grid]==true);}//到時候移除
-    bool NotPass(Ggrid&grid){return !AlreadyPass(grid);}
-    bool PassingGrid(Ggrid&grid);//到時候移除
-    std::vector<Ggrid*>EndPoint;//到時候移除
-    std::unordered_map<Ggrid*,bool>*PassingGrids;//到時候移除
-
-
+    Net(std::ifstream&is,std::unordered_map<std::string,CellInst*>&CellInsts,std::unordered_map<std::string,Net*>&Nets);
+    std::vector<Ggrid*>EndPoint;//Cellmoving要看
     //會用到的..................................................................................
-
     int minLayer;//<minRoutingLayConstraint>
     float weight;//<weight>
     using PIN = std::pair<CellInst*,std::string>;
@@ -108,7 +101,7 @@ struct Net{
     enum class  state {RipUpinit,Adding,CanAdd,doneAdd,dontcare}; //for rip-up
     state routingState = state::CanAdd;
 
-
+    
     bool RerouteFlag = false;
 	std::vector<int> fixedBoundingBox;
 	void updateFixedBoundingBox();

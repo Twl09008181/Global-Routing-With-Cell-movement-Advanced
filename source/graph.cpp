@@ -181,10 +181,9 @@ void Graph::parser(std::string fileName){
         if(netnodes.find(pos3d)==netnodes.end())
         {
             node* n = new node();
+            nettree->addNode(n);
             n->p = pos{r,c,l};
             netnodes.insert({pos3d,n});
-            nettree->all.push_front(n);
-            n->routing_tree = nettree;
             return n;
         }
         else
@@ -192,8 +191,6 @@ void Graph::parser(std::string fileName){
             return netnodes[pos3d];
         }
     };
-
-    
     //先把pin都記錄下來
     for(int i = 1;i<=Nets.size();i++)
     {
@@ -218,21 +215,11 @@ void Graph::parser(std::string fileName){
         std::string p2str = pos2str(p2->p);
         p1->connect(p2);
     }
-    //LEAF node..
-    for(int i = 1;i<=Nets.size();i++)
-    {
-        for(auto n:this->getTree(i)->all)
-        {   
-            if(n->IsLeaf()==true)
-                this->getTree(i)->leaf.push_back(n);
-        }
-    }
     for(int i = 1;i<=Nets.size();i++)
     {
         auto &net = this->getNet(i);
         AddingNet(this,&net);
     }
-    
     //------------------------------------------------voltage 
     is >> type >> value;
     voltageAreas.resize(value);
@@ -278,6 +265,7 @@ void Graph::showEffectedNetSize(){
 		leftBound = lowerBound = INT32_MAX;
 		rightBound = upperBound = INT32_MIN;
 
+        //這邊要update
 		for(auto net : cellInst->nets){	
 			if(net->EndPoint[0]) leftBound = min(leftBound, net->EndPoint[0]->col);
 			else break;

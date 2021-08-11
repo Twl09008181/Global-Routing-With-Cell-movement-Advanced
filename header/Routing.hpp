@@ -14,9 +14,6 @@
 #include <algorithm>
 #include <float.h>
 
-bool add_segment_3D(Ggrid&P1,Ggrid&P2,Graph&graph,int NetID);//未來將移除
-
-
 //----------------------------------------------pos related----------------------------------------------------
 struct pos{
     int row,col,lay;
@@ -43,7 +40,6 @@ struct node{
     node* Out[4] = {nullptr};
 
     void unregister(node*host);
-    bool IsLeaf();
     bool IsSingle();
     void connect(node *host);
 
@@ -52,9 +48,14 @@ struct node{
     bool IsIntree = false;
 };
 struct tree{
-    std::list<node*>leaf;
+    std::set<node*>leaf;//需要常常做update (有Out就要erase掉)
     std::list<node*>all;
-
+    void addNode(node*n)
+    {
+        all.push_front(n);
+        leaf.insert(n);
+        n->routing_tree = this;
+    }
     ~tree()
     {
         //std::cout<<"tree destructor~\n";
@@ -94,13 +95,15 @@ void SegmentFun(Graph*graph,Net*net,node*v,node*u,bool(*f)(Ggrid&,Net*));
 void Dfs_Segment(Graph*graph,Net*net,node*v,bool(*f)(Ggrid&,Net*));
 
 //Tree interface
-void TreeInterface(Graph*graph,Net*net,const std::string &operation);
+void TreeInterface(Graph*graph,Net*net,const std::string &operation,tree* nettree=nullptr);
 void RipUpAll(Graph*graph);
 void AddingAll(Graph*graph);
-inline void RipUpNet(Graph*graph,Net*net){TreeInterface(graph,net,"RipUPinit");TreeInterface(graph,net,"RipUP");}
-inline void AddingNet(Graph*graph,Net*net){TreeInterface(graph,net,"Adding");TreeInterface(graph,net,"doneAdd");}
-inline void EnrollNet(Graph*graph,Net*net){TreeInterface(graph,net,"Enroll");}
-inline void UnregisterNet(Graph*graph,Net*net){TreeInterface(graph,net,"Unregister");}
+inline void RipUpNet(Graph*graph,Net*net,tree*nettree=nullptr){TreeInterface(graph,net,"RipUPinit",nettree);TreeInterface(graph,net,"RipUP",nettree);}
+inline void AddingNet(Graph*graph,Net*net,tree*nettree=nullptr){TreeInterface(graph,net,"Adding",nettree);TreeInterface(graph,net,"doneAdd",nettree);}
+inline void EnrollNet(Graph*graph,Net*net,tree*nettree=nullptr){TreeInterface(graph,net,"Enroll",nettree);}
+inline void UnregisterNet(Graph*graph,Net*net,tree*nettree=nullptr){TreeInterface(graph,net,"Unregister",nettree);}
+
+
 
 //output interface
 void printTreedfs(node*v,std::vector<std::string>*segment=nullptr);

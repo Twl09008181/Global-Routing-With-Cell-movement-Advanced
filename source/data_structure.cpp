@@ -55,11 +55,9 @@ CellInst::CellInst(std::ifstream&is,std::unordered_map<std::string,MasterCell*>&
 }
 
 //---------------------Net---------------------
-Net::Net(std::ifstream&is,std::unordered_map<std::string,CellInst*>&CellInsts,std::unordered_map<std::string,Net*>&Nets)
-    
+Net::Net(std::ifstream&is,std::unordered_map<std::string,CellInst*>&CellInsts,std::unordered_map<std::string,Net*>&Nets)    
 {
-    PassingGrids = new std::unordered_map<Ggrid*,bool>();
-    PassingGrids->clear();//init 
+
     int pinNum;
     std::string LayerCstr;
     is >> netName >> netName >> pinNum >> LayerCstr >> weight;
@@ -93,24 +91,6 @@ Net::Net(std::ifstream&is,std::unordered_map<std::string,CellInst*>&CellInsts,st
     EndPoint = std::vector<Ggrid*>(4,nullptr);
 }
 
-
-bool Net::PassingGrid(Ggrid&grid)
-{
-    if(NotPass(grid)){
-        if(grid.capacity==grid.demand)
-        {
-            std::cerr<<"Error input in PassingGgrid, already overflow!!\n";
-            std::cerr<<"happen : NetName: "<<netName<<" grid : "<<grid.row<<" "<<grid.col<<" "<<grid.lay<<"\n";
-            //exit(1);
-            return false;
-        }
-        else{
-            grid.add_demand();
-            (*PassingGrids)[&grid] = true;
-		}
-	}
-    return true;
-}
 
 
 void CellInst::fixCell(){
