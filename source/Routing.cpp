@@ -177,63 +177,71 @@ void node::connect(node *host)
 //-------------------------------------------------callback functions------------------------------------------------------------
 //format void(f)(Ggrid&,Net*)
 
-void Enroll(Ggrid&g,Net*net){
-    
-    if(g.enrollNet==nullptr||g.enrollNet==net||net==nullptr)
+bool Enroll(Ggrid&g,Net*net){
+    if(g.enrollNet==nullptr||g.enrollNet==net||net==nullptr){
         g.enrollNet = net;
+        return true;
+    }
     else if(net){
         std::cerr<<net->netName<<" error in Enroll, find Ggrid :"<<g.row<<" "<<g.col<<" "<<g.lay<<" is already enrolled by net:"<<g.enrollNet->netName<<"\n";
         exit(1);
     }
 }
-void Unregister(Ggrid&g,Net*net)
+bool Unregister(Ggrid&g,Net*net)
 {
-    if(g.enrollNet==net||g.enrollNet==nullptr||net==nullptr)
-        Enroll(g,nullptr);
-
+    if(g.enrollNet==net||g.enrollNet==nullptr||net==nullptr){
+        return Enroll(g,nullptr);
+    }
     else
     {
         std::cerr<<net->netName<<" error in Unregister, find Ggrid :"<<g.row<<" "<<g.col<<" "<<g.lay<<" is not enrolled by net:"<<net->netName<<"\n";
         exit(1);
     }
 }
-void removedemand(Ggrid&grid,Net*net)
+bool removedemand(Ggrid&grid,Net*net)
 {
     if(grid.enrollNet==net)
     {
         grid.delete_demand();
         Enroll(grid,nullptr);
+        return true;
     }
+    return false;
 }
-void addingdemand(Ggrid&grid,Net*net)
+bool addingdemand(Ggrid&grid,Net*net)
 {
     if(grid.enrollNet!=net)
     {
         grid.add_demand();
         Enroll(grid,net);
+        return true;
     }
+    return false;
 }
 //-------------------------------------------------callback functions------------------------------------------------------------
 
 
 
 //--------------------------------------------------two-pin-sets function---------------------------------------------------
-void TwoPinNetsInit(Graph*graph,Net*net,TwoPinNets&pinset)
+int TwoPinNetsInit(Graph*graph,Net*net,TwoPinNets&pinset)
 {
     net->routingState = Net::state::Adding;
+    int totalInit = 0;
     for(auto &twopin:pinset)
     {
         pos pin1 = twopin.first->p;
         pos pin2 = twopin.second->p;
-        if(pin1.lay!=-1){addingdemand((*graph)(pin1.row,pin1.col,pin1.lay),net);}
-        if(pin2.lay!=-1){addingdemand((*graph)(pin2.row,pin2.col,pin2.lay),net);}
+        if(pin1.lay!=-1){ (addingdemand((*graph)(pin1.row,pin1.col,pin1.lay),net)==true) ? totalInit+=1:totalInit+=0;}
+        if(pin2.lay!=-1){(addingdemand((*graph)(pin2.row,pin2.col,pin2.lay),net)==true) ? totalInit+=1:totalInit+=0;}
     }
+    UnregisterNet(graph,net);
+    return totalInit;
 }
 
 
 
 //--------------------------------------------------------DFS------------------------------------------------------------------
-void SegmentFun(Graph*graph,Net*net,node*v,node*u,void(*f)(Ggrid&,Net*))
+void SegmentFun(Graph*graph,Net*net,node*v,node*u,bool(*f)(Ggrid&,Net*))
 {
     int sRow = v->p.row;
     int sCol = v->p.col;
@@ -260,7 +268,7 @@ void SegmentFun(Graph*graph,Net*net,node*v,node*u,void(*f)(Ggrid&,Net*))
     f(grid,net);//last
 }
 
-void Dfs_Segment(Graph*graph,Net*net,node*v,void(*f)(Ggrid&,Net*))
+void Dfs_Segment(Graph*graph,Net*net,node*v,bool(*f)(Ggrid&,Net*))
 {
     for(int i = 0;i<4;i++)
     {
@@ -312,7 +320,7 @@ struct Par
 {
     std::string warning;//warning
     Net::state Stating[2];//[0]:invalid state , [1] :valid state , [2]: change state
-    void (*callback)(Ggrid&,Net*);
+    bool (*callback)(Ggrid&,Net*);
 };
 void RipUpAll(Graph*graph)
 {

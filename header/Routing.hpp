@@ -67,10 +67,10 @@ using TwoPinNets = std::list<TwoPinNet>;
 
 
 //call back function
-void Enroll(Ggrid&grid,Net*net);
-void removedemand(Ggrid&grid,Net*net);
-void addingdemand(Ggrid&grid,Net*net);
-void Unregister(Ggrid&g,Net*net);
+bool Enroll(Ggrid&grid,Net*net);
+bool removedemand(Ggrid&grid,Net*net);
+bool addingdemand(Ggrid&grid,Net*net);
+bool Unregister(Ggrid&g,Net*net);
 
 
 ////Edge dfs tool (not vertex dfs)
@@ -80,8 +80,8 @@ InStorage getStorage(tree*nettree);
 void RecoverIn(tree*nettree,InStorage&storage);
 
 //Segment fun
-void SegmentFun(Graph*graph,Net*net,node*v,node*u,void(*f)(Ggrid&,Net*));
-void Dfs_Segment(Graph*graph,Net*net,node*v,void(*f)(Ggrid&,Net*));
+void SegmentFun(Graph*graph,Net*net,node*v,node*u,bool(*f)(Ggrid&,Net*));
+void Dfs_Segment(Graph*graph,Net*net,node*v,bool(*f)(Ggrid&,Net*));
 
 //Tree interface
 void TreeInterface(Graph*graph,Net*net,const std::string &operation);
@@ -98,6 +98,6 @@ void printTree(Graph*graph,Net*net,std::vector<std::string>*segment=nullptr);
 void PrintAll(Graph*graph);
 
 //two pin net (untested)
-void TwoPinNetsInit(Graph*graph,Net*net,TwoPinNets&pinset);
+int TwoPinNetsInit(Graph*graph,Net*net,TwoPinNets&pinset);
 
 #endif

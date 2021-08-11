@@ -129,6 +129,7 @@ void Init( std::string path,std::string fileName)
     graph = new Graph(path+fileName);
 }
 
+void TwoPinNetInitCheck(Graph*graph);
 
 int main(int argc, char** argv)
 {
@@ -169,18 +170,14 @@ int main(int argc, char** argv)
 
 
     auto &net1 = graph->getNet(1);
-    RipUpNet(graph,&net1);
-    AddingNet(graph,&net1);
-    EnrollNet(graph,&net1);
-    UnregisterNet(graph,&net1);
+    // RipUpNet(graph,&net1);
+    // AddingNet(graph,&net1);
+    // EnrollNet(graph,&net1);
+    // UnregisterNet(graph,&net1);
 
-    
+
      //two-pin-net init
-    //RipUpAll(graph);
-    // TwoPinNets twopinnets1;
-    // get_two_pins(twopinnets1,net1);
-    // TwoPinNetsInit(graph,&net1,twopinnets1);
-
+    TwoPinNetInitCheck(graph);
 
 
 
@@ -218,4 +215,35 @@ void show_demand(Graph&graph)
         }
     }
     std::cout<<"Total :"<<total_demand<<"\n";
+}
+void TwoPinNetInitCheck(Graph*graph)
+{
+    RipUpAll(graph);
+    for(int i = 1;i<=graph->Nets.size();i++)
+    {
+        auto &net = graph->getNet(i); 
+        TwoPinNets twopinnets;
+        std::set<std::string>pin;
+        get_two_pins(twopinnets,net);
+        for(auto twopins:twopinnets)
+        {
+            if(twopins.first->p.lay!=-1)
+            pin.insert(pos2str(twopins.first->p));
+            if(twopins.second->p.lay!=-1)
+            pin.insert(pos2str(twopins.second->p));
+            //std::cout<<twopins.first->p<<" "<<twopins.second->p<<"\n";
+        }
+        int initDemand = TwoPinNetsInit(graph,&net,twopinnets);
+        std::cout<<"two pin init demand = "<<initDemand<<"\n";
+        std::cout<<"two pin real init demand = "<<pin.size()<<"\n";
+        if(initDemand==pin.size())
+        {
+            std::cout<<net.netName<<" check done!\n";
+        }
+        else{
+            std::cerr<<"demand init error!\n";
+            exit(1);
+        }
+        RipUpNet(graph,&net);
+    }
 }
