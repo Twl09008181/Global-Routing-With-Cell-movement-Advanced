@@ -48,13 +48,40 @@ struct node{
     bool IsIntree = false;
 };
 struct tree{
+    tree()
+    {
+        for(int i = 0;i<4;i++)
+            EndPoint.push_back(nullptr);
+    }
     std::set<node*>leaf;//需要常常做update (有Out就要erase掉)
     std::list<node*>all;
+    std::vector<Ggrid*>EndPoint;//Cellmoving要用到
     void addNode(node*n)
     {
         all.push_front(n);
         leaf.insert(n);
         n->routing_tree = this;
+    }
+    void updateEndPoint(Graph*graph)
+    {
+        for(auto n:all)
+        {
+            if(n->p.lay==-1)continue;
+            auto &grid = (*graph)(n->p.row,n->p.col,n->p.lay);
+            //Updating Endpoint
+			if(!EndPoint.at(0)){EndPoint.at(0) = &grid;}
+			if(!EndPoint.at(1)){EndPoint.at(1) = &grid;}
+			if(!EndPoint.at(2)){EndPoint.at(2) = &grid;}
+			if(!EndPoint.at(3)){EndPoint.at(3) = &grid;}
+			int leftmost  = EndPoint.at(0)->col;
+			int rightmost = EndPoint.at(1)->col;
+			int bottom    = EndPoint.at(2)->row;
+			int top       = EndPoint.at(3)->row;
+			if(grid.col < leftmost)  EndPoint.at(0) = &grid;
+			if(grid.col > rightmost) EndPoint.at(1) = &grid;
+			if(grid.row < bottom)    EndPoint.at(2) = &grid;
+			if(grid.row > top)       EndPoint.at(3) = &grid;
+        }
     }
     ~tree()
     {

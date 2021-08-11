@@ -142,10 +142,17 @@ int main(int argc, char** argv)
 
     Init(path,fileName);    
 
-    std::cout<<"graph Init done!\n";
-    std::cout<<"Inital routing demand:\n";
-    show_demand(graph);
+    // std::cout<<"graph Init done!\n";
+    // std::cout<<"Inital routing demand:\n";
+    // show_demand(graph);
     RoutingSchedule(graph);
+
+
+    auto t = graph->getTree(1);
+    for(auto endpoint:t->EndPoint)
+    {
+        std::cout<<endpoint->row<<" "<<endpoint->col<<" "<<endpoint->lay<<"\n";
+    }
 
 
 
@@ -156,10 +163,8 @@ int main(int argc, char** argv)
 //routing interface必須有 繞線失敗就 recover demand 的功能
 tree* Tree2Tree(Graph*graph,Net*net,tree*t1,tree*t2)
 {
-    bool success = false;//設定false來測試Rip up機制
+    bool success = true;//設定false來測試Rip up機制,設定true來檢測cell moving產生的demand 
     
-
-
     //routing procedure----------------------------------------
 
     //Step 1 dfs Enroll tree2 
@@ -275,6 +280,7 @@ void RoutingSchedule(Graph*graph)
                 AddingNet(graph,net);//recover demand
             }
         }
+        show_demand(graph);
     }
     std::cout<<"final demand:\n";
     show_demand(graph);

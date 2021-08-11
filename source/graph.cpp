@@ -220,6 +220,10 @@ void Graph::parser(std::string fileName){
         auto &net = this->getNet(i);
         AddingNet(this,&net);
     }
+    for(auto t:routingTree)
+    {
+        t->updateEndPoint(this);
+    }
     //------------------------------------------------voltage 
     is >> type >> value;
     voltageAreas.resize(value);
@@ -267,11 +271,14 @@ void Graph::showEffectedNetSize(){
 
         //這邊要update
 		for(auto net : cellInst->nets){	
-			if(net->EndPoint[0]) leftBound = min(leftBound, net->EndPoint[0]->col);
+            int netId = std::stoi(net->netName.substr(1,-1));
+            tree* nettree = this->getTree(netId);
+
+			if(nettree->EndPoint[0]) leftBound = min(leftBound, nettree->EndPoint[0]->col);
 			else break;
-			rightBound = max(rightBound, net->EndPoint[1]->col);
-			lowerBound = min(lowerBound, net->EndPoint[2]->row);
-			upperBound = max(upperBound, net->EndPoint[3]->row);
+			rightBound = max(rightBound, nettree->EndPoint[1]->col);
+			lowerBound = min(lowerBound, nettree->EndPoint[2]->row);
+			upperBound = max(upperBound, nettree->EndPoint[3]->row);
 		}
 		
 		log10Count[log10(leftBound != INT32_MAX ? (-leftBound + rightBound + 1) * (-lowerBound + upperBound + 1) : 1)]++;
@@ -367,4 +374,16 @@ void Graph::placementInit(){
 			if(gain >= 0) candiPq.push({gain, stoi(p.first.substr(1)), i });
 		}
 	}
+}
+void Graph::updateTree(int NetId,tree*t)
+{
+    if(NetId<1||NetId>Nets.size())
+    {
+        std::cout<<"void updateTree(int NetId,tree*t) input Error: 1<=NetId<="<<Nets.size()<<"\n";
+        exit(1);
+    }
+    tree * oldtree = routingTree.at(NetId-1);
+    delete oldtree;
+    routingTree.at(NetId-1) = t;
+    routingTree.at(NetId-1)->updateEndPoint(this);
 }

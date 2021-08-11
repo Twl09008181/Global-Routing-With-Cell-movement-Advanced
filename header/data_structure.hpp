@@ -90,7 +90,6 @@ struct Ggrid{
 struct Net{
     std::string netName;//<netName>
     Net(std::ifstream&is,std::unordered_map<std::string,CellInst*>&CellInsts,std::unordered_map<std::string,Net*>&Nets);
-    std::vector<Ggrid*>EndPoint;//Cellmoving要看
     //會用到的..................................................................................
     int minLayer;//<minRoutingLayConstraint>
     float weight;//<weight>
@@ -101,7 +100,7 @@ struct Net{
     enum class  state {RipUpinit,Adding,CanAdd,doneAdd,dontcare}; //for rip-up
     state routingState = state::CanAdd;
 
-    
+
     bool RerouteFlag = false;
 	std::vector<int> fixedBoundingBox;
 	void updateFixedBoundingBox();

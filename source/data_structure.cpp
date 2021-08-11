@@ -88,7 +88,6 @@ Net::Net(std::ifstream&is,std::unordered_map<std::string,CellInst*>&CellInsts,st
         #endif
         //std::cout<<cellName<<" "<<pinName<<"\n";
     }
-    EndPoint = std::vector<Ggrid*>(4,nullptr);
 }
 
 
