@@ -218,22 +218,15 @@ void addingdemand(Ggrid&grid,Net*net)
 
 
 //--------------------------------------------------two-pin-sets function---------------------------------------------------
-void RoutingInit(Graph*graph,Net*net,TwoPinNets&pinset)
+void TwoPinNetsInit(Graph*graph,Net*net,TwoPinNets&pinset)
 {
     net->routingState = Net::state::Adding;
     for(auto &twopin:pinset)
     {
         pos pin1 = twopin.first->p;
         pos pin2 = twopin.second->p;
-
-        if(pin1.row!=pin2.row||pin1.col!=pin2.col||pin1.lay!=pin2.lay)
-        {
-            SegmentFun(graph,net,twopin.first,twopin.second,addingdemand);
-        }
-        else{
-            if(pin1.lay!=-1){addingdemand((*graph)(pin1.row,pin1.col,pin1.lay),net);}
-            if(pin2.lay!=-1){addingdemand((*graph)(pin2.row,pin2.col,pin2.lay),net);}
-        }
+        if(pin1.lay!=-1){addingdemand((*graph)(pin1.row,pin1.col,pin1.lay),net);}
+        if(pin2.lay!=-1){addingdemand((*graph)(pin2.row,pin2.col,pin2.lay),net);}
     }
 }
 
@@ -321,7 +314,22 @@ struct Par
     Net::state Stating[2];//[0]:invalid state , [1] :valid state , [2]: change state
     void (*callback)(Ggrid&,Net*);
 };
-
+void RipUpAll(Graph*graph)
+{
+    for(int i = 1;i<=graph->Nets.size();i++){
+        auto &net = graph->getNet(i); 
+        TreeInterface(graph,&net,"RipUPinit");
+        TreeInterface(graph,&net,"RipUP");
+    }
+}
+void AddingAll(Graph*graph)
+{
+    for(int i = 1;i<=graph->Nets.size();i++){
+        auto &net = graph->getNet(i);   
+        TreeInterface(graph,&net,"Adding");
+        TreeInterface(graph,&net,"doneAdd");
+    }
+}
 void TreeInterface(Graph*graph,Net*net,const std::string &operation)
 {
     Par par;
@@ -336,14 +344,15 @@ void TreeInterface(Graph*graph,Net*net,const std::string &operation)
     {
         par.callback = removedemand;
         par.Stating[0] = Net::state::RipUpinit;
-        par.Stating[1] = Net::state::doneRipUP;
+        par.Stating[1] = Net::state::CanAdd;
         par.warning    = "Warning : Net.routing state must be  Net::state::RipUPInit!!\n";
     }
     else if(operation=="Adding")
     {
         par.callback = addingdemand;
-        par.Stating[0] = Net::state::dontcare;//don't care 
+        par.Stating[0] = Net::state::CanAdd;
         par.Stating[1] = Net::state::Adding;
+        par.warning    = "Warning : Net.routing state must be  Net::state::CanAdd!!\n";
     }
     else if (operation=="doneAdd")
     {
@@ -418,4 +427,11 @@ void printTree(Graph*graph,Net*net,std::vector<std::string>*segment)
     }
     //recover
     RecoverIn(t,storage);
+}
+void PrintAll(Graph*graph)
+{
+    for(int i = 1;i<=graph->Nets.size();i++){
+        auto &net = graph->getNet(i); 
+        printTree(graph,&net);
+    }
 }

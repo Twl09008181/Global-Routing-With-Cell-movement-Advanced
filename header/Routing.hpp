@@ -85,13 +85,19 @@ void Dfs_Segment(Graph*graph,Net*net,node*v,void(*f)(Ggrid&,Net*));
 
 //Tree interface
 void TreeInterface(Graph*graph,Net*net,const std::string &operation);
-
+void RipUpAll(Graph*graph);
+void AddingAll(Graph*graph);
+inline void RipUpNet(Graph*graph,Net*net){TreeInterface(graph,net,"RipUPinit");TreeInterface(graph,net,"RipUP");}
+inline void AddingNet(Graph*graph,Net*net){TreeInterface(graph,net,"Adding");TreeInterface(graph,net,"doneAdd");}
+inline void EnrollNet(Graph*graph,Net*net){TreeInterface(graph,net,"Enroll");}
+inline void UnregisterNet(Graph*graph,Net*net){TreeInterface(graph,net,"Unregister");}
 
 //output interface
 void printTreedfs(node*v,std::vector<std::string>*segment=nullptr);
 void printTree(Graph*graph,Net*net,std::vector<std::string>*segment=nullptr);
+void PrintAll(Graph*graph);
 
 //two pin net (untested)
-void RoutingInit(Graph*graph,Net*net,TwoPinNets&pinset);
+void TwoPinNetsInit(Graph*graph,Net*net,TwoPinNets&pinset);
 
 #endif
