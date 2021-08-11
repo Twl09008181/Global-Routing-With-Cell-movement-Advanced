@@ -171,9 +171,25 @@ int TwoPinNetsInit(Graph*graph,Net*net,TwoPinNets&pinset)
         if(pin2.lay!=-1){(addingdemand((*graph)(pin2.row,pin2.col,pin2.lay),net)==true) ? totalInit+=1:totalInit+=0;}
     }
     UnregisterNet(graph,net);
+    net->routingState = Net::state::doneAdd;
     return totalInit;
 }
 
+int MovTwoPinNetsInit(Graph*graph,Net*net,TwoPinNets&pinset)
+{
+    EnrollNet(graph,net);
+    
+    int totalInit = 0;
+    for(auto &twopin:pinset)
+    {
+        pos pin1 = twopin.first->p;
+        pos pin2 = twopin.second->p;
+        if(pin1.lay!=-1){ (removedemand((*graph)(pin1.row,pin1.col,pin1.lay),net)==true) ? totalInit+=1:totalInit+=0;}
+        if(pin2.lay!=-1){(removedemand((*graph)(pin2.row,pin2.col,pin2.lay),net)==true) ? totalInit+=1:totalInit+=0;}
+    }
+    net->routingState = Net::state::CanAdd;
+    return totalInit;
+}
 
 
 //--------------------------------------------------------DFS------------------------------------------------------------------

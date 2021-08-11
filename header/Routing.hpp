@@ -139,5 +139,5 @@ void PrintAll(Graph*graph);
 
 //two pin net (untested)
 int TwoPinNetsInit(Graph*graph,Net*net,TwoPinNets&pinset);
-
+int MovTwoPinNetsInit(Graph*graph,Net*net,TwoPinNets&pinset);//testing
 #endif

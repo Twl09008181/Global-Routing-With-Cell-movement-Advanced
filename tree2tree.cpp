@@ -47,12 +47,17 @@ int main(int argc, char** argv)
 	return 0;
 }
 
+
+bool accept;
 //routing interface必須有 繞線失敗就 recover demand 的功能
 tree* Tree2Tree(Graph*graph,Net*net,tree*t1,tree*t2)
 {
-    bool success = true;//設定false來測試Rip up機制,設定true來檢測cell moving產生的demand 
+    //bool accept = false;//設定false來測試Rip up機制
+
+    //bool accept = true;
+
     
-    //routing procedure----------------------------------------
+    //routing procedure---------------------------------------- 還沒完成 差這裡而已了
 
     //Step 1 dfs Enroll tree2 
 
@@ -69,19 +74,24 @@ tree* Tree2Tree(Graph*graph,Net*net,tree*t1,tree*t2)
 
 
     //繞線完成後要將t2當中的leaf,all加入倒t1當中 並回傳t1 ,如果失敗就回傳nullptr
-    if(success){
-        
-        //combine leaf node of t2 to t1 
-        //combine all node of t2 to t1 
-        
-        //t2.leaf.clear()
-        //t2.all.clear()
+    if(accept){
+        if(t1!=t2){
+            for(auto l:t2->leaf){
+                t1->leaf.insert(l);
+                l->routing_tree = t1;
+            }
+            for(auto n:t2->all){
+                t1->all.push_back(n);
+                n->routing_tree = t1;
+            }
+            t2->leaf.clear();
+            t2->all.clear();
+        }
         return t1;
     }
     else {
         return nullptr;
     }
-        
 }
 std::pair<tree*,bool> Reroute(Graph*graph,Net*net,TwoPinNets&twopins)
 {
@@ -125,6 +135,11 @@ void RoutingSchedule(Graph*graph)
 
         //Reroute all net related to this Cell
         int lastFaileIdx = 0;
+        std::cout<<"------Starting-------\n";
+        show_demand(graph);
+        std::cout<<"accept or not?\n";
+        std::cin>>accept;
+
         for(int i = 0;i<movCell->nets.size();i++)
         {
             auto net = movCell->nets.at(i); 
@@ -133,6 +148,7 @@ void RoutingSchedule(Graph*graph)
             get_two_pins(twopins,*net);
             auto result = Reroute(graph,net,twopins);
             netTrees.at(i) = result.first;
+
             if(result.second==false)
             {
                 lastFaileIdx = i;
@@ -142,6 +158,7 @@ void RoutingSchedule(Graph*graph)
         }
         if(movingsuccess)//replace old tree
         {
+            std::cout<<"updating!\n";
             for(int i = 0;i<movCell->nets.size();i++)
             {
                 int NetId = std::stoi(movCell->nets.at(i)->netName.substr(1,-1));
@@ -150,13 +167,18 @@ void RoutingSchedule(Graph*graph)
             success++;
         }
         else{///failed recover old tree demand
-
+            
+            std::cout<<"Before ripup\n";
+            show_demand(graph);
             //RipUp 這次繞線
             for(int i = 0;i<=lastFaileIdx;i++)
             {
                 auto &net = movCell->nets.at(i);
                 RipUpNet(graph,net,netTrees.at(i));//recover demand
             }
+            
+            std::cout<<"After ripup\n";
+            show_demand(graph);
 
             for(int i = 0;i<=lastFaileIdx;i++){delete netTrees.at(i);}//delete 
 
@@ -167,6 +189,7 @@ void RoutingSchedule(Graph*graph)
                 AddingNet(graph,net);//recover demand
             }
         }
+        std::cout<<"After routing!\n";
         show_demand(graph);
     }
     std::cout<<"final demand:\n";
