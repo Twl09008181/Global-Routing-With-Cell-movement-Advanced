@@ -121,15 +121,14 @@ float VIA_W = 1;
 
 Graph* graph = nullptr;
 
-void show_demand(Graph&graph);
-
+void show_demand(Graph*graph);
 
 void Init( std::string path,std::string fileName)
 {
     graph = new Graph(path+fileName);
 }
 
-void TwoPinNetInitCheck(Graph*graph);
+void RoutingSchedule(Graph*graph);
 
 int main(int argc, char** argv)
 {
@@ -144,55 +143,141 @@ int main(int argc, char** argv)
     Init(path,fileName);    
 
     std::cout<<"graph Init done!\n";
-    //PrintAll(graph);
-    // show_demand(*graph);
-    // RipUpAll(graph);
-    // AddingAll(graph);
+    
+    RoutingSchedule(graph);
 
 
 
-    //Example : Enroll & Unregister state 
-    // auto &net1 = graph->getNet(1);
-    // auto &net2 = graph->getNet(2);
-    // TreeInterface(graph,&net1,"Enroll");//first Enroll all grid of tree1
-    // TreeInterface(graph,&net1,"Unregister");//Unregister these grid , so net2 can Enroll.
-    // TreeInterface(graph,&net2,"Enroll");
-    // TreeInterface(graph,&net2,"Unregister");
+    delete graph;
+	return 0;
+}
+
+//routing interface必須有 繞線失敗就 recover demand 的功能
+tree* Tree2Tree(Graph*graph,Net*net,tree*t1,tree*t2)
+{
+    bool success = false;//設定false來測試Reroute的記憶體釋放功能
     
 
-    // //RipUP checking
-    // TreeInterface(graph,&net1,"RipUPinit");//first init 
-    // TreeInterface(graph,&net1,"RipUP");//then RipUP
 
-    // //Adding checking
-    // TreeInterface(graph,&net1,"Adding");
-    // TreeInterface(graph,&net1,"doneAdd");
+    //routing procedure----------------------------------------
 
+    //Step 1 dfs Enroll tree2 
 
-    auto &net1 = graph->getNet(1);
-    // RipUpNet(graph,&net1);
-    // AddingNet(graph,&net1);
-    // EnrollNet(graph,&net1);
-    // UnregisterNet(graph,&net1);
+    //Step 2 dijkstra   (還要設計cost function canroute等function)
+
+    //Step 3 繞出來則設定sucess = true  然後  routing只存segment point (要backtrace 回去)
+
+    //if failed, set success to false 
 
 
-     //two-pin-net init
-    TwoPinNetInitCheck(graph);
+    //future : bounding box
+
+    //routing procedure----------------------------------------
 
 
+    //繞線完成後要將t2當中的leaf,all加入倒t1當中 並回傳t1 ,如果失敗就回傳nullptr
+    if(success){
+        
+        //combine leaf node of t2 to t1 
+        //combine all node of t2 to t1 
+        
+        return t1;
+    }
+    else {//Rip up two-pin-nets造成的demand  (由tree interface dfs)
 
-    show_demand(*graph);
-	return 0;
+    
+        //TreeInterface(graph)//要寫一個新的interface for tree 而非整條net 原本的應該改為NetInterface
+        //tree Interface的net.state要重新設計......
+
+        //Tree Ripup ......
+        return nullptr;
+    }
+        
+}
+tree* Reroute(Graph*graph,Net*net,TwoPinNets&twopins)
+{
+    TwoPinNetsInit(graph,net,twopins);//Init
+    tree*T= nullptr;
+    for(auto pins:twopins)
+    {
+        T = Tree2Tree(graph,net,pins.first->routing_tree,pins.second->routing_tree);
+        //free twopins (recover demand由Tree2Tree完成)
+        if(!T) 
+        {
+            std::set<node*>collect;//set(避免duplicate delete)
+            for(auto pins:twopins)
+            {
+                collect.insert(pins.first);
+                collect.insert(pins.second);
+            }
+            tree* CollectTree = new tree;
+            for(auto pin:collect)
+                CollectTree->all.push_front(pin);
+            delete CollectTree;
+            return nullptr;
+        }
+    }
+    return T;
+}
+
+void RoutingSchedule(Graph*graph)
+{
+    graph->placementInit();
+
+    CellInst* movCell;
+    int mov = 0;
+    int success = 0;
+    while( (movCell = graph->cellMoving()))
+    {
+        mov++;
+        bool movingsuccess = true;
+        std::vector<tree*>netTrees(movCell->nets.size(),nullptr);
+
+        //Reroute all net related to this Cell
+        for(int i = 0;i<movCell->nets.size();i++)
+        {
+            auto net = movCell->nets.at(i); 
+            RipUpNet(graph,net);
+            TwoPinNets twopins;
+            get_two_pins(twopins,*net);
+            netTrees.at(i) = Reroute(graph,net,twopins);
+            if(netTrees.at(i)==nullptr)
+            {
+                movingsuccess = false;
+                break;
+            }
+        }
+        if(movingsuccess)//replace old tree
+        {
+            for(int i = 0;i<movCell->nets.size();i++)
+            {
+                int NetId = std::stoi(movCell->nets.at(i)->netName.substr(1,-1));
+                graph->updateTree(NetId,netTrees.at(i));
+            }
+            success++;
+        }
+        else{///failed recover old tree demand
+            for(int i = 0;i<movCell->nets.size();i++)
+            {
+                auto &net = movCell->nets.at(i);
+                AddingNet(graph,net);//recover demand
+            }
+        }
+        break;
+    }
+    std::cout<<"final demand:\n";
+    show_demand(graph);
+    std::cout<<"count = "<<mov<<"\n";
+    std::cout<<"sucess = "<<success<<"\n";
 }
 
 
 
-
-void show_demand(Graph&graph)
+void show_demand(Graph*graph)
 {
-    int LayerNum = graph.LayerNum();
-    std::pair<int,int>Row = graph.RowBound();
-    std::pair<int,int>Col = graph.ColBound();
+    int LayerNum = graph->LayerNum();
+    std::pair<int,int>Row = graph->RowBound();
+    std::pair<int,int>Col = graph->ColBound();
 
     int total_demand = 0;
     for(int lay = 1;lay <= LayerNum;lay++)
@@ -207,7 +292,7 @@ void show_demand(Graph&graph)
                 // #ifdef PARSER_TEST
                 //std::cout<<graph(row,col,lay).demand<<" ";
                 //#endif
-                total_demand+=graph(row,col,lay).demand;
+                total_demand+=(*graph)(row,col,lay).demand;
             }
             //#ifdef PARSER_TEST
             //std::cout<<"\n";
@@ -215,35 +300,4 @@ void show_demand(Graph&graph)
         }
     }
     std::cout<<"Total :"<<total_demand<<"\n";
-}
-void TwoPinNetInitCheck(Graph*graph)
-{
-    RipUpAll(graph);
-    for(int i = 1;i<=graph->Nets.size();i++)
-    {
-        auto &net = graph->getNet(i); 
-        TwoPinNets twopinnets;
-        std::set<std::string>pin;
-        get_two_pins(twopinnets,net);
-        for(auto twopins:twopinnets)
-        {
-            if(twopins.first->p.lay!=-1)
-            pin.insert(pos2str(twopins.first->p));
-            if(twopins.second->p.lay!=-1)
-            pin.insert(pos2str(twopins.second->p));
-            //std::cout<<twopins.first->p<<" "<<twopins.second->p<<"\n";
-        }
-        int initDemand = TwoPinNetsInit(graph,&net,twopinnets);
-        std::cout<<"two pin init demand = "<<initDemand<<"\n";
-        std::cout<<"two pin real init demand = "<<pin.size()<<"\n";
-        if(initDemand==pin.size())
-        {
-            std::cout<<net.netName<<" check done!\n";
-        }
-        else{
-            std::cerr<<"demand init error!\n";
-            exit(1);
-        }
-        RipUpNet(graph,&net);
-    }
 }

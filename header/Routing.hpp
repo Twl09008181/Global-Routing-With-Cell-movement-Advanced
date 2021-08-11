@@ -54,6 +54,16 @@ struct node{
 struct tree{
     std::list<node*>leaf;
     std::list<node*>all;
+
+    ~tree()
+    {
+        //std::cout<<"tree destructor~\n";
+        for(auto n:all)
+        {
+            //std::cout<<"delete "<<n->p<<"\n";
+            delete n;
+        }
+    }
 };
 
 using TwoPinNet = std::pair<node*,node*>;

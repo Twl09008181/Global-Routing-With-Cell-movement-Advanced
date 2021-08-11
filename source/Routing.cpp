@@ -175,17 +175,11 @@ void node::connect(node *host)
 
 
 //-------------------------------------------------callback functions------------------------------------------------------------
-//format void(f)(Ggrid&,Net*)
+//format bool(f)(Ggrid&,Net*)
 
 bool Enroll(Ggrid&g,Net*net){
-    if(g.enrollNet==nullptr||g.enrollNet==net||net==nullptr){
-        g.enrollNet = net;
-        return true;
-    }
-    else if(net){
-        std::cerr<<net->netName<<" error in Enroll, find Ggrid :"<<g.row<<" "<<g.col<<" "<<g.lay<<" is already enrolled by net:"<<g.enrollNet->netName<<"\n";
-        exit(1);
-    }
+    g.enrollNet = net;
+    return true;
 }
 bool Unregister(Ggrid&g,Net*net)
 {

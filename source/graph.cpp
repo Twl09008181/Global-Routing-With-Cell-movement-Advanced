@@ -4,7 +4,42 @@
 std::vector<std::map<std::string,bool>>SegmentsTesting;
 void InitRoutingTree(Graph*graph,node*p1,node*p2,int netId);
 //------------------------------------------------------Destructor-------------------------------------------------------------
-Graph::~Graph(){}
+
+
+void DfsDestruct(node *v)
+{
+
+
+
+}
+
+Graph::~Graph(){
+
+    std::cout<<"graph desturctor~\n";
+
+
+    std::cout<<"delete mCell~\n";
+    for(auto mc:mCell)
+    {
+        delete mc.second;
+    }
+    std::cout<<"delete CellInsts~\n";
+    for(auto C:CellInsts)
+    {
+        delete C.second;
+    }
+    std::cout<<"delete Nets~\n";
+    for(auto N:Nets)
+    {
+        delete N.second;
+    }
+    std::cout<<"delete routingTree~\n";
+    for(auto t:routingTree)
+    {
+        delete t;
+    }
+    std::cout<<"graph destructor done!\n";
+}
 
 
 //------------------------------------------------------Constructor--------------------------------------------------------------
@@ -195,8 +230,7 @@ void Graph::parser(std::string fileName){
     for(int i = 1;i<=Nets.size();i++)
     {
         auto &net = this->getNet(i);
-        TreeInterface(this,&net,"Adding");
-        TreeInterface(this,&net,"doneAdd");
+        AddingNet(this,&net);
     }
     
     //------------------------------------------------voltage 

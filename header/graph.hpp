@@ -73,6 +73,17 @@ public:
         }
         return routingTree.at(NetId-1);
     }
+    void updateTree(int NetId,tree*t)
+    {
+        if(NetId<1||NetId>Nets.size())
+        {
+            std::cout<<"void updateTree(int NetId,tree*t) input Error: 1<=NetId<="<<Nets.size()<<"\n";
+            exit(1);
+        }
+        tree * oldtree = routingTree.at(NetId-1);
+        delete oldtree;
+        routingTree.at(NetId-1) = t;
+    }
     Layer& getLay(int Lay){
         return Layers.at(Lay-1);
     }
