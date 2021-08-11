@@ -188,10 +188,10 @@ void Enroll(Ggrid&g,Net*net){
 }
 void Unregister(Ggrid&g,Net*net)
 {
-    if(g.enrollNet==net||g.enrollNet==nullptr)
+    if(g.enrollNet==net||g.enrollNet==nullptr||net==nullptr)
         Enroll(g,nullptr);
 
-    else if(net)
+    else
     {
         std::cerr<<net->netName<<" error in Unregister, find Ggrid :"<<g.row<<" "<<g.col<<" "<<g.lay<<" is not enrolled by net:"<<net->netName<<"\n";
         exit(1);
@@ -315,16 +315,16 @@ void RecoverIn(tree*nettree,InStorage&storage)
 //------------------------------------------------Demand Interface------------------------------------------------------------------------
 
 
-struct DemandPar
+struct Par
 {
     std::string warning;//warning
     Net::state Stating[2];//[0]:invalid state , [1] :valid state , [2]: change state
     void (*callback)(Ggrid&,Net*);
 };
 
-void DemandInterface(Graph*graph,Net*net,const std::string &operation)
+void TreeInterface(Graph*graph,Net*net,const std::string &operation)
 {
-    DemandPar par;
+    Par par;
     if(operation=="RipUPinit")
     {
         par.callback = Enroll;
@@ -342,9 +342,8 @@ void DemandInterface(Graph*graph,Net*net,const std::string &operation)
     else if(operation=="Adding")
     {
         par.callback = addingdemand;
-        par.Stating[0] = Net::state::doneAdd;//AddingDone or 
+        par.Stating[0] = Net::state::dontcare;//don't care 
         par.Stating[1] = Net::state::Adding;
-        par.warning    = " Warning : Net.routing state must be  Net::state::DoneAdd!!\n";
     }
     else if (operation=="doneAdd")
     {
@@ -353,6 +352,16 @@ void DemandInterface(Graph*graph,Net*net,const std::string &operation)
         par.Stating[1] = Net::state::doneAdd;
         par.warning    = " Warning : Net.routing state must be  Net::state::Adding!!\n";
     }
+    else if (operation=="Enroll"){//can be used as RipUPinit but don't check the state.
+        par.callback = Enroll;
+        par.Stating[0] = Net::state::dontcare;
+        par.Stating[1] = Net::state::RipUpinit;
+    }
+    else if (operation=="Unregister"){//can be used as doneAdd but don't check the state.
+        par.callback = Unregister;
+        par.Stating[0] = Net::state::dontcare;
+        par.Stating[1] = Net::state::doneAdd;
+    }
     else{
         std::cerr<<"Demand interface error!! unKnown op:"<<operation<<"\n";
         exit(1);
@@ -360,7 +369,8 @@ void DemandInterface(Graph*graph,Net*net,const std::string &operation)
 
     //-----core code
     tree *t = graph->getTree(std::stoi(net->netName.substr(1,-1)));
-    if(net->routingState!=par.Stating[0]){std::cerr<<net->netName<<par.warning;}
+
+    if(par.Stating[0]!=Net::state::dontcare && net->routingState!=par.Stating[0]){std::cerr<<net->netName<<par.warning;}
     else{
         InStorage storage = getStorage(t);
         for(auto leaf:t->leaf){

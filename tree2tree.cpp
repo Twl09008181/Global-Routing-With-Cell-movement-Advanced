@@ -129,12 +129,7 @@ void Init( std::string path,std::string fileName)
     graph = new Graph(path+fileName);
 }
 
-//void RipUPinit(Graph&graph,Net&net);//testing :因為現在init routing還沒改成tree,到時候要改成tree的結構Rip up
-// void removedemandTesting(Graph&graph,Net&net);//testing :因為現在init routing還沒改成tree,到時候要改成tree的結構Rip up
 void show_demand(Graph&graph);//for test
-// void addingdemandTesting(Graph&graph,Net&net);//testing :因為現在init routing還沒改成tree,到時候要改成tree的結構Rip up
-
-
 
 
 int main(int argc, char** argv)
@@ -150,27 +145,47 @@ int main(int argc, char** argv)
     Init(path,fileName);    
 
     std::cout<<"graph Init done!\n";
-    for(int i = 1;i<=graph->Nets.size();i++){
-        auto &net = graph->getNet(i); 
-        printTree(graph,&net);
-    }
+    // for(int i = 1;i<=graph->Nets.size();i++){
+    //     auto &net = graph->getNet(i); 
+    //     printTree(graph,&net);
+    // }
+
+
+    // show_demand(*graph);
+    // for(int i = 1;i<=graph->Nets.size();i++){
+    //     auto &net = graph->getNet(i); 
+    //     TreeInterface(graph,&net,"RipUPinit");
+    //     TreeInterface(graph,&net,"RipUP");
+    // }
+    // show_demand(*graph);
+    // for(int i = 1;i<=graph->Nets.size();i++){
+    //     auto &net = graph->getNet(i);   
+    //     TreeInterface(graph,&net,"Adding");
+    //     TreeInterface(graph,&net,"doneAdd");
+    // }
+    // show_demand(*graph);
+
+
+
+    //Example : Enroll & Unregister state 
+    auto &net1 = graph->getNet(1);
+    auto &net2 = graph->getNet(2);
+    TreeInterface(graph,&net1,"Enroll");//first Enroll all grid of tree1
+    TreeInterface(graph,&net1,"Unregister");//Unregister these grid , so net2 can Enroll.
+    TreeInterface(graph,&net2,"Enroll");
+    TreeInterface(graph,&net2,"Unregister");
+    
+
+    //RipUP checking
+    TreeInterface(graph,&net1,"RipUPinit");//first init 
+    TreeInterface(graph,&net1,"RipUP");//then RipUP
+
+    //Adding checking
+    TreeInterface(graph,&net1,"Adding");
+    TreeInterface(graph,&net1,"doneAdd");
 
 
     show_demand(*graph);
-    for(int i = 1;i<=graph->Nets.size();i++){
-        auto &net = graph->getNet(i); 
-        DemandInterface(graph,&net,"RipUPinit");
-        DemandInterface(graph,&net,"RipUP");
-    }
-    show_demand(*graph);
-    for(int i = 1;i<=graph->Nets.size();i++){
-        auto &net = graph->getNet(i); 
-        net.routingState = Net::state::doneAdd;
-        DemandInterface(graph,&net,"Adding");
-        DemandInterface(graph,&net,"doneAdd");
-    }
-    show_demand(*graph);
-  
 	return 0;
 }
 

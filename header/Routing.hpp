@@ -47,7 +47,7 @@ struct node{
     bool IsSingle();
     void connect(node *host);
 
-    bool mark = false;//保留中
+    bool mark = false;//保留中 
     float cost = FLT_MAX;
     bool IsIntree = false;
 };
@@ -83,8 +83,8 @@ void RecoverIn(tree*nettree,InStorage&storage);
 void SegmentFun(Graph*graph,Net*net,node*v,node*u,void(*f)(Ggrid&,Net*));
 void Dfs_Segment(Graph*graph,Net*net,node*v,void(*f)(Ggrid&,Net*));
 
-//Demand interface
-void DemandInterface(Graph*graph,Net*net,const std::string &operation);
+//Tree interface
+void TreeInterface(Graph*graph,Net*net,const std::string &operation);
 
 
 //output interface

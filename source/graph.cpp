@@ -195,8 +195,8 @@ void Graph::parser(std::string fileName){
     for(int i = 1;i<=Nets.size();i++)
     {
         auto &net = this->getNet(i);
-        DemandInterface(this,&net,"Adding");
-        DemandInterface(this,&net,"doneAdd");
+        TreeInterface(this,&net,"Adding");
+        TreeInterface(this,&net,"doneAdd");
     }
     
     //------------------------------------------------voltage 
