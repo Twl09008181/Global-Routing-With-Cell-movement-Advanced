@@ -170,37 +170,16 @@ void Graph::parser(std::string fileName){
             exit(1);
         }
     }
-    std::vector<std::map<std::string,node*>>pins;
-
-    pins.resize(Nets.size());
-    auto searchnode = [&pins,this](int r,int c,int l,int netId)
-    {
-        std::string pos3d= std::to_string(r)+","+std::to_string(c)+","+std::to_string(l);
-        auto&netnodes = pins.at(netId-1);
-        auto nettree = this->getTree(netId);
-        if(netnodes.find(pos3d)==netnodes.end())
-        {
-            node* n = new node();
-            nettree->addNode(n);
-            n->p = pos{r,c,l};
-            netnodes.insert({pos3d,n});
-            return n;
-        }
-        else
-        {
-            return netnodes[pos3d];
-        }
-    };
-    //先把pin都記錄下來
     for(int i = 1;i<=Nets.size();i++)
     {
-        auto &net = this->getNet(i);
+        auto &net = this->getNet(i);//NetId = i
+        auto nettree = this->getTree(i);//NetId = i
         for(auto realpins:net.net_pins)
         {
             int r = realpins.first->row;
             int c = realpins.first->col;
             int l = realpins.first->mCell->pins[realpins.second];
-            searchnode(r,c,l,i);
+            nettree->addNode(new node{pos{r,c,l}});
         }
     }
     //segment reading
@@ -209,10 +188,10 @@ void Graph::parser(std::string fileName){
         int r2,c2,l2;
         is >> r1 >> c1 >> l1 >> r2 >> c2 >> l2 >>type;
         int NetId = std::stoi(std::string(type.begin()+1,type.end()));
-        node*p1 = searchnode(r1,c1,l1,NetId);
-        node*p2 = searchnode(r2,c2,l2,NetId);
-        std::string p1str = pos2str(p1->p);
-        std::string p2str = pos2str(p2->p);
+        auto nettree = this->getTree(NetId);
+        node* p1 = new node{pos{r1,c1,l1}};
+        node* p2 = new node{pos{r2,c2,l2}};
+        nettree->addNode(p1);nettree->addNode(p2);
         p1->connect(p2);
     }
     for(int i = 1;i<=Nets.size();i++)

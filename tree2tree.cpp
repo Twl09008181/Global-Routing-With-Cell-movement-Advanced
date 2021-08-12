@@ -31,15 +31,19 @@ int main(int argc, char** argv)
 
     // std::cout<<"graph Init done!\n";
     // std::cout<<"Inital routing demand:\n";
-    // show_demand(graph);
+    show_demand(graph);
+
+
+    // PrintAll(graph);
+
     RoutingSchedule(graph);
 
 
-    auto t = graph->getTree(1);
-    for(auto endpoint:t->EndPoint)
-    {
-        std::cout<<endpoint->row<<" "<<endpoint->col<<" "<<endpoint->lay<<"\n";
-    }
+    // auto t = graph->getTree(1);
+    // for(auto endpoint:t->EndPoint)
+    // {
+    //     std::cout<<endpoint->row<<" "<<endpoint->col<<" "<<endpoint->lay<<"\n";
+    // }
 
 
 

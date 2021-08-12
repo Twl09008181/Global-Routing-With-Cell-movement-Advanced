@@ -71,18 +71,13 @@ void MultiLayerPoint(node*pin,std::map<std::string,std::set<int>>&PointMap,TwoPi
                 node * n = nullptr;
                 if(last != pin->p.lay)
                 {
-                    n = new node();
+                    n = new node(pos{pin->p.row,pin->p.col,last});
                     if(n==nullptr)
                     {
                         std::cerr<<"MultiLayerPoint allocater failed!!\n";
                         exit(1);
                     }
-                    n->p = pos{pin->p.row,pin->p.col,last};
-
                     pin->routing_tree->addNode(n);
-                    // n->routing_tree = pin->routing_tree;
-                    // n->routing_tree->all.push_back(n);
-                    // n->routing_tree->leaf.insert(n);
                 }
                 else{
                     n = pin;//for single grid pin
@@ -151,9 +146,7 @@ void get_two_pins(std::list<TwoPinNet>& two_pin_nets,Net&net)
         std::string pin = std::to_string(row)+","+std::to_string(col);
         if(pins.find(pin)==pins.end())
         {
-            pos p {row,col,-1};//temporarily assign to -1
-            node* n = new node();
-            n->p = p;
+            node* n = new node(pos{row,col,-1});
             pins.insert({pin,n});
         }
         return pins[pin];

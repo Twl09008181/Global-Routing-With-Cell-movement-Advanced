@@ -34,18 +34,19 @@ inline std::string pos2str(const pos &p)
 //-----tree & node
 struct tree;
 struct node{
-    pos p;
-    tree * routing_tree = nullptr;
-    node* In[4] = {nullptr};//In[0] via from down,In[1]:via from up , In[2] negative dir of layer ,In[3] positive dir of layer
-    node* Out[4] = {nullptr};
-
-    void unregister(node*host);
-    bool IsSingle();
+    node(const pos&position)
+        : p{position},routing_tree{nullptr},parent{nullptr}{}
+    node()
+        :routing_tree{nullptr},parent{nullptr}{}
+    
+    bool IsSingle();//not parent , and not child (single grid net)
     void connect(node *host);
-
+    pos p;
+    tree * routing_tree;
+    node* parent;
     bool mark = false;//保留中 
     float cost = FLT_MAX;
-    bool IsIntree = false;
+    bool IsIntree = false;//backtrack need
 };
 struct tree{
     tree()
@@ -85,12 +86,7 @@ struct tree{
     }
     ~tree()
     {
-        //std::cout<<"tree destructor~\n";
-        for(auto n:all)
-        {
-            //std::cout<<"delete "<<n->p<<"\n";
-            delete n;
-        }
+        for(auto n:all){delete n;}
     }
 };
 
@@ -101,9 +97,6 @@ using TwoPinNets = std::list<TwoPinNet>;
 //-----------All interface
 
 
-
-
-
 //call back function
 bool Enroll(Ggrid&grid,Net*net);
 bool removedemand(Ggrid&grid,Net*net);
@@ -111,15 +104,10 @@ bool addingdemand(Ggrid&grid,Net*net);
 bool Unregister(Ggrid&g,Net*net);
 
 
-////Edge dfs tool (not vertex dfs)
-using In = node**;
-using InStorage = std::vector<In>;
-InStorage getStorage(tree*nettree);
-void RecoverIn(tree*nettree,InStorage&storage);
 
 //Segment fun
-void SegmentFun(Graph*graph,Net*net,node*v,node*u,bool(*f)(Ggrid&,Net*));
-void Dfs_Segment(Graph*graph,Net*net,node*v,bool(*f)(Ggrid&,Net*));
+void Sgmt_Grid(Graph*graph,Net*net,node*v,node*u,bool(*f)(Ggrid&,Net*));
+void Backtrack_Sgmt_Grid(Graph*graph,Net*net,node*v,bool(*f)(Ggrid&,Net*));
 
 //Tree interface
 void TreeInterface(Graph*graph,Net*net,const std::string &operation,tree* nettree=nullptr);
