@@ -7,11 +7,13 @@ bool node::IsSingle()//Is leaf and no parent
 }
 void node::connect(node *host)
 {
-    if(this->parent!=host)
+    if(this->parent!=host&&this!=host)
     {   
         host->parent = this;
         this->routing_tree->leaf.erase(this);
     }
+
+    //future:adding host to routing tree (Broadcast)
 }
 
 //-------------------------------------------------node Member function-----------------------------------------------------------
@@ -57,6 +59,7 @@ bool addingdemand(Ggrid&grid,Net*net)
     }
     return false;
 }
+bool target(Ggrid&g,Net*net){g.isTarget = true;return true;}
 //-------------------------------------------------callback functions------------------------------------------------------------
 
 
@@ -76,7 +79,7 @@ int TwoPinNetsInit(Graph*graph,Net*net,TwoPinNets&pinset)
     return totalInit;
 }
 
-void Sgmt_Grid(Graph*graph,Net*net,node*v,node*u,bool(*f)(Ggrid&,Net*))
+void Sgmt_Init(node*v,node*u,pos &PosS,pos&PosT,pos &PosDelta)
 {
     int sRow = v->p.row;
     int sCol = v->p.col;
@@ -91,17 +94,29 @@ void Sgmt_Grid(Graph*graph,Net*net,node*v,node*u,bool(*f)(Ggrid&,Net*))
     int d_l = (sLay==tLay)? 0 : ( (sLay>tLay)? -1:1);  
     using std::abs;
     int check = abs(d_r) + abs(d_c) + abs(d_l);
-    if(check>1){std::cerr<<"error in SementFun!!! Input: "<<u->p<<" " << v->p <<" is not a segment\n";exit(1);}
+    if(check>1){std::cerr<<"error in Sgmt_Init!!! Input: "<<u->p<<" " << v->p <<" is not a segment\n";exit(1);}
+    
+    PosS = pos{sRow,sCol,sLay};
+    PosT = pos{tRow,tCol,tLay};
+    PosDelta = pos{d_r,d_c,d_l};
+}
+
+void Sgmt_Grid(Graph*graph,Net*net,node*v,node*u,bool(*f)(Ggrid&,Net*))
+{
+    pos PosS,PosT,PosDelta;
+    Sgmt_Init(v,u,PosS,PosT,PosDelta);
     do{
-        auto &grid = (*graph)(sRow,sCol,sLay);
+        auto &grid = (*graph)(PosS.row,PosS.col,PosS.lay);
         f(grid,net);
-        sRow+=d_r;
-        sCol+=d_c;
-        sLay+=d_l;
-    }while(sRow!=tRow||sCol!=tCol||sLay!=tLay);
-    auto &grid = (*graph)(sRow,sCol,sLay);
+        PosS.row+=PosDelta.row;
+        PosS.col+=PosDelta.col;
+        PosS.lay+=PosDelta.lay;
+    }while(PosS!=PosT);
+    auto &grid = (*graph)(PosS.row,PosS.col,PosS.lay);
     f(grid,net);//last
 }
+
+
 void Backtack_Sgmt_Grid(Graph*graph,Net*net,node*v,bool(*f)(Ggrid&,Net*))
 {
     while(v->parent)
@@ -176,6 +191,12 @@ void TreeInterface(Graph*graph,Net*net,const std::string &operation,tree* nettre
         par.Stating[0] = Net::state::dontcare;
         par.Stating[1] = Net::state::doneAdd;
     }
+    else if (operation=="target")
+    {
+        par.callback = target;
+        par.Stating[0] = Net::state::dontcare;
+        par.Stating[1] = Net::state::dontcare;
+    }
     else{
         std::cerr<<"Demand interface error!! unKnown op:"<<operation<<"\n";
         exit(1);
@@ -201,13 +222,14 @@ void TreeInterface(Graph*graph,Net*net,const std::string &operation,tree* nettre
         }
         // RecoverIn(t,storage);
     }
-    net->routingState = par.Stating[1];
+    if(par.Stating[1]!=Net::state::dontcare)
+        net->routingState = par.Stating[1];
 }
 
 
 
 //Output interface---------------------
-void printTreedfs(node*v,std::vector<std::string>*segment)
+void backTrackPrint(node*v,std::vector<std::string>*segment)
 {
     while (v->parent)
     {
@@ -220,19 +242,59 @@ void printTreedfs(node*v,std::vector<std::string>*segment)
     
 }
 
-void printTree(Graph*graph,Net*net,std::vector<std::string>*segment)
+void printTree(tree*t,std::vector<std::string>*segment)
 {
-    int NetId = std::stoi(net->netName.substr(1,-1));
-    tree * t = graph->getTree(NetId);
     for(auto leaf:t->leaf){
         if(!leaf->IsSingle()&&leaf->p.lay!=-1)
-            printTreedfs(leaf,segment);
+            backTrackPrint(leaf,segment);
     }
 }
-void PrintAll(Graph*graph)
+void PrintAll(Graph*graph,std::vector<std::string>*segment)
 {
     for(int i = 1;i<=graph->Nets.size();i++){
-        auto &net = graph->getNet(i); 
-        printTree(graph,&net);
+        auto t = graph->getTree(i);
+        printTree(t,segment);
+    }
+}
+
+
+
+void Expand(node*v,node*u)
+{
+    pos PosS,PosT,PosDelta;
+    Sgmt_Init(v,u,PosS,PosT,PosDelta);
+    node*previous = v;
+    v->IsIntree = true;//important
+    u->IsIntree = true;//important
+
+    while(PosS!=PosT){
+        PosS.row+=PosDelta.row;
+        PosS.col+=PosDelta.col;
+        PosS.lay+=PosDelta.lay;
+        //std::cout<<PosS<<"\n";
+        if(PosS==PosT)
+        {
+            previous->connect(u);
+            break;
+        }
+        node *ptr = new node(pos{PosS.row,PosS.col,PosS.lay});
+        v->routing_tree->addNode(ptr);
+        previous->connect(ptr);
+        previous = ptr;
+    }
+}
+void ExpandTree(tree*t)
+{
+
+    for(auto leaf:t->leaf){
+        if(!leaf->IsSingle()&&leaf->p.lay!=-1)
+        {
+            while(leaf->parent)
+            {
+                //std::cout<<"leaf->parent loop\n";
+                Expand(leaf->parent,leaf);
+                leaf = leaf->parent;
+            }
+        }
     }
 }

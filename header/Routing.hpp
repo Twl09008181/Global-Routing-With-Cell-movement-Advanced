@@ -17,6 +17,14 @@
 //----------------------------------------------pos related----------------------------------------------------
 struct pos{
     int row,col,lay;
+    bool operator==(pos&other)
+    {
+        return row==other.row&&col==other.col&&lay==other.lay;
+    }
+    bool operator!=(pos&other)
+    {
+        return !(*this==other);
+    }
 };
 inline std::ostream& operator<<(std::ostream&os,pos&p)
 {
@@ -97,17 +105,24 @@ using TwoPinNets = std::list<TwoPinNet>;
 //-----------All interface
 
 
-//call back function
+//Ggrid call back function
 bool Enroll(Ggrid&grid,Net*net);
 bool removedemand(Ggrid&grid,Net*net);
 bool addingdemand(Ggrid&grid,Net*net);
 bool Unregister(Ggrid&g,Net*net);
+bool target(Ggrid&g,Net*net);
 
 
-
-//Segment fun
+//Ggrid Segment fun
 void Sgmt_Grid(Graph*graph,Net*net,node*v,node*u,bool(*f)(Ggrid&,Net*));
 void Backtrack_Sgmt_Grid(Graph*graph,Net*net,node*v,bool(*f)(Ggrid&,Net*));
+
+
+
+//node Segment fun
+void ExpandTree(tree*t);
+
+
 
 //Tree interface
 void TreeInterface(Graph*graph,Net*net,const std::string &operation,tree* nettree=nullptr);
@@ -117,14 +132,13 @@ inline void RipUpNet(Graph*graph,Net*net,tree*nettree=nullptr){TreeInterface(gra
 inline void AddingNet(Graph*graph,Net*net,tree*nettree=nullptr){TreeInterface(graph,net,"Adding",nettree);TreeInterface(graph,net,"doneAdd",nettree);}
 inline void EnrollNet(Graph*graph,Net*net,tree*nettree=nullptr){TreeInterface(graph,net,"Enroll",nettree);}
 inline void UnregisterNet(Graph*graph,Net*net,tree*nettree=nullptr){TreeInterface(graph,net,"Unregister",nettree);}
-
+inline void TargetNet(Graph*graph,Net*net,tree*nettree=nullptr){TreeInterface(graph,net,"target",nettree);}
 
 
 //output interface
-void printTreedfs(node*v,std::vector<std::string>*segment=nullptr);
-void printTree(Graph*graph,Net*net,std::vector<std::string>*segment=nullptr);
-void PrintAll(Graph*graph);
-
+void backTrackPrint(node*v,std::vector<std::string>*segment=nullptr);
+void printTree(tree*t,std::vector<std::string>*segment=nullptr);
+void PrintAll(Graph*graph,std::vector<std::string>*segment=nullptr);
 //two pin net (untested)
 int TwoPinNetsInit(Graph*graph,Net*net,TwoPinNets&pinset);
 int MovTwoPinNetsInit(Graph*graph,Net*net,TwoPinNets&pinset);//testing
