@@ -11,6 +11,10 @@ void Init( std::string path,std::string fileName)
 }
 
 void RoutingSchedule(Graph*graph);
+std::pair<tree*,bool> Reroute(Graph*graph,Net*net,TwoPinNets&twopins);
+void OnlyRouting(Graph*graph,std::string fileName);
+
+
 class minCost{
 public:
     minCost() = default;
@@ -34,8 +38,8 @@ int main(int argc, char** argv)
     show_demand(graph);
 
     
-
-    RoutingSchedule(graph);
+    OnlyRouting(graph,fileName);
+    //RoutingSchedule(graph);
 
 
     // PrintAll(graph);
@@ -45,6 +49,62 @@ int main(int argc, char** argv)
 	return 0;
 }
 
+
+void OnlyRouting(Graph*graph,std::string fileName)
+{
+
+    // RipUpAll(graph);
+    for(int i = 1;i<=graph->Nets.size();i++)
+    {
+        auto &net = graph->getNet(i);
+        RipUpNet(graph,&net);
+        TwoPinNets twopins;
+        get_two_pins(twopins,net);
+        auto result = Reroute(graph,&net,twopins);
+        tree * netTree = result.first;
+        if(result.second==false)
+        {
+           net.routingState = Net::state::doneAdd;
+           RipUpNet(graph,&net,netTree);
+           delete netTree;
+           AddingNet(graph,&net);//recover demand
+        }
+        else{
+            graph->updateTree(i,netTree);
+        }
+        std::cout<<"After routing!\n";
+        show_demand(graph);
+    }
+    //printTree(graph->getTree(1),graph->getNet(1).netName);
+
+
+
+    std::vector<std::string>segments;
+    std::cout<<"Routing complete !\n";
+    PrintAll(graph,&segments);
+    //寫成輸出檔案
+    int NumRoutes = segments.size();
+    fileName = fileName.substr(0,fileName.size()-4);
+    fileName = fileName+"Out.txt";
+    std::ofstream os{fileName};
+    if(!os){
+        std::cerr<<"error:file "<<fileName<<" cann't open!\n";
+        exit(1);
+    } 
+    
+    os<<"NumMovedCellInst 0\n";
+    os<<"NumRoutes "<<NumRoutes<<"\n";
+
+    for(auto s:segments)
+    {
+        os<<s<<"\n";
+    }
+
+    std::cout<<"saving done!\n";
+}
+
+
+
 bool IsIntree(Graph*graph,Net*net,node*v)
 {
     auto &grid = (*graph)(v->p.row,v->p.col,v->p.lay);
@@ -52,11 +112,12 @@ bool IsIntree(Graph*graph,Net*net,node*v)
 }
 void LabelIntree(Graph*graph,Net*net,node*v,std::unordered_map<std::string,bool>&t1Point)
 {
+    //std::cout<<"find label!\n";
     while(v)
     {
-        //std::cout<<v->p<<"\n";
+      //  std::cout<<v->p<<"\n";
         auto &grid = (*graph)(v->p.row,v->p.col,v->p.lay);
-        if(t1Point.find(pos2str(v->p))!=t1Point.end())break;
+        //if(t1Point.find(pos2str(v->p))!=t1Point.end())break;
         Enroll(grid,net);
         v = v->parent;
     }
@@ -165,6 +226,7 @@ tree* Tree2Tree(Graph*graph,Net*net,tree*t1,tree*t2)
     std::priority_queue<node*,std::vector<node*>,minCost>Q;
     std::unordered_map<std::string,float>gridCost;//再想想要放哪
     std::unordered_map<std::string,bool>t1Point;//用來backtrack
+    std::unordered_map<std::string,node*>t2Pesudo;//用來update two-pin-net sets...
 
     //Multi Source
     bool InitSource = true;
@@ -178,6 +240,16 @@ tree* Tree2Tree(Graph*graph,Net*net,tree*t1,tree*t2)
         gridCost[pos2str(n->p)] = 0;
         t1Point[pos2str(n->p)] = true;
     }
+    bool t2IsPesudo = false;
+    for(auto n:t2->all){
+        if(n->p.lay==-1){ 
+            t2IsPesudo = true;
+            std::string twoDpos = std::to_string(n->p.row)+" "+std::to_string(n->p.col);
+            t2Pesudo[twoDpos] = n;
+        }  
+    }
+
+
     //std::cout<<"Step3\n";
     //Step 3 Search
     node *targetPoint = nullptr;
@@ -186,7 +258,12 @@ tree* Tree2Tree(Graph*graph,Net*net,tree*t1,tree*t2)
         node * v = Q.top();Q.pop();
         if((*graph)(v->p.row,v->p.col,v->p.lay).isTarget)//find
         {
+            std::string twoDpos = std::to_string(v->p.row)+" "+std::to_string(v->p.col);
             targetPoint = v;
+            if(t2Pesudo.find(twoDpos)!=t2Pesudo.end())
+            {
+                t2Pesudo[twoDpos]->p = v->p;
+            }
             break;
         }
         node * u = nullptr;
@@ -208,10 +285,22 @@ tree* Tree2Tree(Graph*graph,Net*net,tree*t1,tree*t2)
     //Untarget
     UntargetTree(graph,net,t2);
 
+    if(t2IsPesudo)
+    {
+        tree *  pesudoClear = new tree;
+        for(auto pesudoPin:t2Pesudo)
+        {
+            node *pesudoNode = new node(pesudoPin.second->p); 
+            pesudoNode->p.lay = -1;
+            pesudoClear->addNode(pesudoNode);
+        }
+        UntargetTree(graph,net,pesudoClear);
+    }
+
 
     //std::cout<<"Step4\n";
     //Step 4
-    if(targetPoint){
+    if(targetPoint){//and still need update the t2....
         //std::cout<<"success!\n";
         LabelIntree(graph,net,targetPoint,t1Point);
     }
@@ -260,6 +349,7 @@ std::pair<tree*,bool> Reroute(Graph*graph,Net*net,TwoPinNets&twopins)
     //std::cout<<initdemand<<"\n";
 
     tree*T= nullptr;
+    //std::cout<<"TwopinNet!\n";
     for(auto pins:twopins)
     {
         //std::cout<<pins.first->p<<" "<<pins.second->p<<"\n";
@@ -281,6 +371,7 @@ std::pair<tree*,bool> Reroute(Graph*graph,Net*net,TwoPinNets&twopins)
                 for(node * pin : t->leaf){CollectTree->leaf.insert(pin);}//for rip-up
                 for(node * pin : t->all){CollectTree->all.push_front(pin);}//for delete
             }
+            net->routingState = Net::state::doneAdd;//這樣外面才能Ripup
             return {CollectTree,false};
         }
     }
@@ -292,6 +383,10 @@ std::pair<tree*,bool> Reroute(Graph*graph,Net*net,TwoPinNets&twopins)
     return {T,true};
 }
 
+
+
+
+//現在先不用回傳最佳,有答案就Ok
 void RoutingSchedule(Graph*graph)
 {
     graph->placementInit();
@@ -361,6 +456,10 @@ void RoutingSchedule(Graph*graph)
                 auto &net = movCell->nets.at(i);
                 AddingNet(graph,net);//recover demand
             }
+
+            //復位
+            movCell->row = movCell->originalRow;
+            movCell->col = movCell->originalCol;
         }
         std::cout<<"After routing!\n";
         show_demand(graph);

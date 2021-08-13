@@ -80,6 +80,11 @@ public:
 	void showEffectedNetSize();
 	std::pair<std::string,CellInst*>cellMoving();
 	void placementInit();
+    bool removeCellsBlkg(CellInst* cell);
+
+    bool insertCellsBlkg(CellInst* cell);
+
+
 //--------------------------------------------Data Mmeber------------------------------------------------------------
     std::unordered_map<std::string,MasterCell*>mCell;
     std::unordered_map<std::string,CellInst*>CellInsts;

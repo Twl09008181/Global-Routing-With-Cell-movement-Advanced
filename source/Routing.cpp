@@ -190,6 +190,7 @@ void TreeInterface(Graph*graph,Net*net,Par par,tree* nettree)
     if(par.Stating[0]!=Net::state::dontcare && net->routingState!=par.Stating[0]){
         std::cerr<<net->netName<<par.warning<<" this operation will be discard!\n";
         warningHappen = true;
+        exit(1);
     }
     else{
         for(auto leaf:t->leaf){
@@ -201,6 +202,11 @@ void TreeInterface(Graph*graph,Net*net,Par par,tree* nettree)
             {
                 for(int i = net->minLayer;i<=graph->LayerNum();i++)//label all layer be target
                     (*graph)(leaf->p.row,leaf->p.col,i).isTarget = true;  
+            }
+            else if(leaf->p.lay==-1&&par.callback==Untarget)
+            {
+                for(int i = net->minLayer;i<=graph->LayerNum();i++)//label all layer be target
+                    (*graph)(leaf->p.row,leaf->p.col,i).isTarget = false;  
             }
         }
     }

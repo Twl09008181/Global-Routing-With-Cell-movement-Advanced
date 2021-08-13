@@ -308,11 +308,18 @@ std::pair<std::string,CellInst*> Graph::cellMoving(){
 		auto [gain, cellId, voltageId] = candiPq.top();
 		candiPq.pop();
 		CellInst* cell = CellInsts["C" + std::to_string(cellId)];
+        removeCellsBlkg(cell);
+
 		if(validMovement(cell, voltageId)){
 			cell->row = voltageAreas[cell->vArea][voltageId].first;
 			cell->col = voltageAreas[cell->vArea][voltageId].second;
-			return {"C" + std::to_string(cellId),cell};
+            if(!insertCellsBlkg(cell)){
+				removeCellsBlkg(cell);
+				cell->row = cell->originalRow;
+				cell->col = cell->originalCol;
+			}else return {"C" + std::to_string(cellId),cell};
 		}
+        insertCellsBlkg(cell);
 	}
 
 	return {"None",nullptr};
@@ -332,6 +339,7 @@ void Graph::placementInit(){
 	//updating optimal region (CellInst)
 	for(auto& p : CellInsts){
 		p.second->updateOptimalRegion();
+        insertCellsBlkg(p.second);
 	}	
 
 	//calculate every possible movable position's grade 
@@ -357,6 +365,23 @@ void Graph::placementInit(){
 		}
 	}
 }
+bool Graph::removeCellsBlkg(CellInst* cell){	
+	for(auto [name, blkg] : cell->mCell->blkgs){
+		auto& grid = (*this)(cell->row, cell->col, blkg.first);
+		grid.demand -= blkg.second;
+	}
+	return true;
+}
+
+bool Graph::insertCellsBlkg(CellInst* cell){
+	for(auto [name, blkg] : cell->mCell->blkgs){
+		auto& grid = (*this)(cell->row, cell->col, blkg.first);
+		grid.demand += blkg.second;
+		if(grid.get_remaining() < 0) return false;
+	}
+	return true;
+}
+
 void Graph::updateTree(int NetId,tree*t)
 {
     if(NetId<1||NetId>Nets.size())
