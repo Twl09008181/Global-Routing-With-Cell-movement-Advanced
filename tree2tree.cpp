@@ -13,7 +13,7 @@ void Init( std::string path,std::string fileName)
 void RoutingSchedule(Graph*graph);
 std::pair<tree*,bool> Reroute(Graph*graph,Net*net,TwoPinNets&twopins);
 void OnlyRouting(Graph*graph,std::string fileName);
-
+void OutPut(Graph*graph,std::string fileName);
 
 class minCost{
 public:
@@ -54,9 +54,16 @@ void OnlyRouting(Graph*graph,std::string fileName)
 {
 
     // RipUpAll(graph);
-    for(int i = 1;i<=graph->Nets.size();i++)
+    int bestDmd = show_demand(graph);
+    for(int i = 68;i<=68;i++)
     {
         auto &net = graph->getNet(i);
+        std::cout<<"Pins:\n";
+        for(auto pin:net.net_pins)
+        {
+            std::cout<<pin.first->row<<" "<<pin.first->col<<" "<<(*pin.first->mCell).pins[pin.second]<<"\n";
+        }
+
         RipUpNet(graph,&net);
         TwoPinNets twopins;
         get_two_pins(twopins,net);
@@ -73,11 +80,18 @@ void OnlyRouting(Graph*graph,std::string fileName)
             graph->updateTree(i,netTree);
         }
         std::cout<<"After routing!\n";
-        show_demand(graph);
+        int dmd = show_demand(graph);
+        if(dmd<bestDmd)
+        {
+            bestDmd = dmd;
+            OutPut(graph,fileName);
+        }
     }
     //printTree(graph->getTree(1),graph->getNet(1).netName);
-
-
+  
+}
+void OutPut(Graph*graph,std::string fileName)
+{
 
     std::vector<std::string>segments;
     std::cout<<"Routing complete !\n";
@@ -91,7 +105,6 @@ void OnlyRouting(Graph*graph,std::string fileName)
         std::cerr<<"error:file "<<fileName<<" cann't open!\n";
         exit(1);
     } 
-    
     os<<"NumMovedCellInst 0\n";
     os<<"NumRoutes "<<NumRoutes<<"\n";
 
@@ -99,10 +112,8 @@ void OnlyRouting(Graph*graph,std::string fileName)
     {
         os<<s<<"\n";
     }
-
     std::cout<<"saving done!\n";
 }
-
 
 
 bool IsIntree(Graph*graph,Net*net,node*v)
@@ -115,7 +126,7 @@ void LabelIntree(Graph*graph,Net*net,node*v,std::unordered_map<std::string,bool>
     //std::cout<<"find label!\n";
     while(v)
     {
-      //  std::cout<<v->p<<"\n";
+        //std::cout<<v->p<<"\n";
         auto &grid = (*graph)(v->p.row,v->p.col,v->p.lay);
         //if(t1Point.find(pos2str(v->p))!=t1Point.end())break;
         Enroll(grid,net);
@@ -230,11 +241,7 @@ tree* Tree2Tree(Graph*graph,Net*net,tree*t1,tree*t2)
 
     //Multi Source
     bool InitSource = true;
-    for(auto n:t1->all){//全部丟入Q  
-        if(n->p.lay==-1){ 
-           if(!(InitSource = AssingPesudo(graph,net,n)))
-            break;
-        }  
+    for(auto n:t1->all){//全部丟入Q    //至此12,27 1仍為leaf
         n->cost = 0;
         Q.push(n);
         gridCost[pos2str(n->p)] = 0;
@@ -313,6 +320,7 @@ tree* Tree2Tree(Graph*graph,Net*net,tree*t1,tree*t2)
         if(!IsIntree(graph,net,n)){
             recycle.push_front(n);
             t1->leaf.erase(n);
+            t1->leaf.insert(n->parent);  //Bug Fix!!!
         }
     }
     for(auto n:recycle)
@@ -351,8 +359,7 @@ std::pair<tree*,bool> Reroute(Graph*graph,Net*net,TwoPinNets&twopins)
     tree*T= nullptr;
     //std::cout<<"TwopinNet!\n";
     for(auto pins:twopins)
-    {
-        //std::cout<<pins.first->p<<" "<<pins.second->p<<"\n";
+    {   
         if(initdemand!=-1)
             T = Tree2Tree(graph,net,pins.first->routing_tree,pins.second->routing_tree);
         
@@ -376,8 +383,6 @@ std::pair<tree*,bool> Reroute(Graph*graph,Net*net,TwoPinNets&twopins)
         }
     }
 
-    //if Success
-    //printTree(T);
     UnRegisterTree(graph,net,T);
     AddingNet(graph,net,T);
     return {T,true};
