@@ -52,6 +52,7 @@ struct node{
     pos p;
     tree * routing_tree;
     node* parent;
+    std::set<node*>child;
     bool mark = false;//保留中 
     float cost = FLT_MAX;
     bool IsIntree = false;//backtrack need
@@ -187,11 +188,10 @@ inline void UnRegisterTree(Graph*graph,Net*net,tree*nettree){
     TreeInterface(graph,net,init,nettree);
 }
 
-
-
+// void backTrackPrint(node*v,Net*net,std::vector<std::string>*segment)
 //output interface
-void backTrackPrint(node*v,std::string &NetName,std::vector<std::string>*segment=nullptr);
-void printTree(tree*t,std::string &NetName,std::vector<std::string>*segment=nullptr);
+void backTrackPrint(Graph*graph,Net*net,node*v,std::vector<std::string>*segment=nullptr);
+void printTree(Graph*graph,Net*net,tree*t,std::vector<std::string>*segment=nullptr);
 void PrintAll(Graph*graph,std::vector<std::string>*segment=nullptr);
 //two pin net (untested)
 int TwoPinNetsInit(Graph*graph,Net*net,TwoPinNets&pinset);

@@ -53,16 +53,15 @@ int main(int argc, char** argv)
 void OnlyRouting(Graph*graph,std::string fileName)
 {
 
-    // RipUpAll(graph);
     int bestDmd = show_demand(graph);
-    for(int i = 68;i<=68;i++)
+    for(int i = 1;i<=graph->Nets.size();i++)
     {
         auto &net = graph->getNet(i);
-        std::cout<<"Pins:\n";
-        for(auto pin:net.net_pins)
-        {
-            std::cout<<pin.first->row<<" "<<pin.first->col<<" "<<(*pin.first->mCell).pins[pin.second]<<"\n";
-        }
+        // std::cout<<"Pins:\n";
+        // for(auto pin:net.net_pins)
+        // {
+        //     std::cout<<pin.first->row<<" "<<pin.first->col<<" "<<(*pin.first->mCell).pins[pin.second]<<"\n";
+        // }
 
         RipUpNet(graph,&net);
         TwoPinNets twopins;
@@ -71,8 +70,8 @@ void OnlyRouting(Graph*graph,std::string fileName)
         tree * netTree = result.first;
         if(result.second==false)
         {
-           net.routingState = Net::state::doneAdd;
-           RipUpNet(graph,&net,netTree);
+           net.routingState = Net::state::CanAdd;
+           //RipUpNet(graph,&net,netTree);
            delete netTree;
            AddingNet(graph,&net);//recover demand
         }
@@ -84,9 +83,10 @@ void OnlyRouting(Graph*graph,std::string fileName)
         if(dmd<bestDmd)
         {
             bestDmd = dmd;
-            OutPut(graph,fileName);
+            //OutPut(graph,fileName);
         }
     }
+    OutPut(graph,fileName);
     //printTree(graph->getTree(1),graph->getNet(1).netName);
   
 }
@@ -128,7 +128,7 @@ void LabelIntree(Graph*graph,Net*net,node*v,std::unordered_map<std::string,bool>
     {
         //std::cout<<v->p<<"\n";
         auto &grid = (*graph)(v->p.row,v->p.col,v->p.lay);
-        //if(t1Point.find(pos2str(v->p))!=t1Point.end())break;
+        if(t1Point.find(pos2str(v->p))!=t1Point.end())break;
         Enroll(grid,net);
         v = v->parent;
     }
@@ -302,6 +302,7 @@ tree* Tree2Tree(Graph*graph,Net*net,tree*t1,tree*t2)
             pesudoClear->addNode(pesudoNode);
         }
         UntargetTree(graph,net,pesudoClear);
+        delete pesudoClear;
     }
 
 
@@ -323,9 +324,10 @@ tree* Tree2Tree(Graph*graph,Net*net,tree*t1,tree*t2)
             t1->leaf.insert(n->parent);  //Bug Fix!!!
         }
     }
-    for(auto n:recycle)
+    for(auto n:recycle){
         t1->all.remove(n);
-
+        t1->leaf.erase(n);
+    }
 
     //std::cout<<"Step6\n";
     if(targetPoint){
@@ -378,7 +380,10 @@ std::pair<tree*,bool> Reroute(Graph*graph,Net*net,TwoPinNets&twopins)
                 for(node * pin : t->leaf){CollectTree->leaf.insert(pin);}//for rip-up
                 for(node * pin : t->all){CollectTree->all.push_front(pin);}//for delete
             }
-            net->routingState = Net::state::doneAdd;//這樣外面才能Ripup
+            TreeInterface(graph,net,EnrollNocheck,CollectTree);
+            net->routingState = Net::state::Routing;//
+            UnRegisterTree(graph,net,CollectTree);
+            net->routingState = Net::state::doneAdd;//
             return {CollectTree,false};
         }
     }

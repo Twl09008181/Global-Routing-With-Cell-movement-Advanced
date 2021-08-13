@@ -9,6 +9,7 @@ void node::connect(node *host)
 {
     if(this->parent!=host&&this!=host)
     {   
+        child.insert(host);
         host->parent = this;
         this->routing_tree->leaf.erase(this);
     }
@@ -100,8 +101,9 @@ int TwoPinNetsInit(Graph*graph,Net*net,TwoPinNets&pinset)
         pos pin2 = twopin.second->p;
         if(pin1.lay!=-1){ canInit = (Enroll((*graph)(pin1.row,pin1.col,pin1.lay),net)==true) ? totalInit+=1:totalInit+=0;}
         if(pin2.lay!=-1&&canInit){canInit = (Enroll((*graph)(pin2.row,pin2.col,pin2.lay),net)==true) ? totalInit+=1:totalInit+=0;}
-        if(!canInit)
-            break;
+        if(!canInit){
+            return -1;
+        }
         twopin.first->IsIntree = true;
         twopin.second->IsIntree = true;
     }
@@ -217,31 +219,39 @@ void TreeInterface(Graph*graph,Net*net,Par par,tree* nettree)
 
 
 //Output interface---------------------
-void backTrackPrint(node*v,std::string &NetName,std::vector<std::string>*segment)
+void backTrackPrint(Graph*graph,Net*net,node*v,std::vector<std::string>*segment)
 {
     while (v->parent)
     {
+        auto &g = (*graph)(v->p.row,v->p.col,v->p.lay);
+        if(g.enrollNet!=net){
+            std::cout<<"!!break\n";
+            break;
+        }
         std::string posv = pos2str(v->p);
         std::string posu = pos2str(v->parent->p);
-        if(segment){segment->push_back(posu+" "+posv+" "+NetName);}
-        else{std::cout<<(posu+" "+posv+" "+NetName)<<"\n";}
+        if(segment){segment->push_back(posu+" "+posv+" "+net->netName);}
+        else{std::cout<<(posu+" "+posv+" "+net->netName)<<"\n";}
         v = v->parent;
     }
     
 }
 
-void printTree(tree*t,std::string &NetName,std::vector<std::string>*segment)
+void printTree(Graph*graph,Net*net,tree*t,std::vector<std::string>*segment)
 {
     for(auto leaf:t->leaf){
         if(!leaf->IsSingle()&&leaf->p.lay!=-1)
-            backTrackPrint(leaf,NetName,segment);
+            backTrackPrint(graph,net,leaf,segment);
     }
 }
 void PrintAll(Graph*graph,std::vector<std::string>*segment)
 {
     for(int i = 1;i<=graph->Nets.size();i++){
         auto t = graph->getTree(i);
-        printTree(t,graph->getNet(i).netName,segment);
+        auto &net = graph->getNet(i);
+        TreeInterface(graph,&net,EnrollNocheck,t);
+
+        printTree(graph,&net,t,segment);
     }
 }
 
