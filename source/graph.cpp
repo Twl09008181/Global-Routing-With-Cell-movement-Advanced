@@ -273,7 +273,7 @@ void Graph::showEffectedNetSize(){
 
 }
 
-CellInst* Graph::cellMoving(){
+std::pair<std::string,CellInst*> Graph::cellMoving(){
 	// after the init each time pop one possible movement
 	
 	//check -> had not moved, (check coor)
@@ -311,11 +311,11 @@ CellInst* Graph::cellMoving(){
 		if(validMovement(cell, voltageId)){
 			cell->row = voltageAreas[cell->vArea][voltageId].first;
 			cell->col = voltageAreas[cell->vArea][voltageId].second;
-			return cell;
+			return {"C" + std::to_string(cellId),cell};
 		}
 	}
 
-	return nullptr;
+	return {"None",nullptr};
 
 }
 

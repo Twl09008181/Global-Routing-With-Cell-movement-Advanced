@@ -190,8 +190,8 @@ inline void UnRegisterTree(Graph*graph,Net*net,tree*nettree){
 
 
 //output interface
-void backTrackPrint(node*v,std::vector<std::string>*segment=nullptr);
-void printTree(tree*t,std::vector<std::string>*segment=nullptr);
+void backTrackPrint(node*v,std::string &NetName,std::vector<std::string>*segment=nullptr);
+void printTree(tree*t,std::string &NetName,std::vector<std::string>*segment=nullptr);
 void PrintAll(Graph*graph,std::vector<std::string>*segment=nullptr);
 //two pin net (untested)
 int TwoPinNetsInit(Graph*graph,Net*net,TwoPinNets&pinset);

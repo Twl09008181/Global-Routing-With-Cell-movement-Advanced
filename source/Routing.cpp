@@ -211,31 +211,31 @@ void TreeInterface(Graph*graph,Net*net,Par par,tree* nettree)
 
 
 //Output interface---------------------
-void backTrackPrint(node*v,std::vector<std::string>*segment)
+void backTrackPrint(node*v,std::string &NetName,std::vector<std::string>*segment)
 {
     while (v->parent)
     {
         std::string posv = pos2str(v->p);
         std::string posu = pos2str(v->parent->p);
-        if(segment){segment->push_back(posu+" "+posv);}
-        else{std::cout<<(posu+" "+posv)<<"\n";}
+        if(segment){segment->push_back(posu+" "+posv+" "+NetName);}
+        else{std::cout<<(posu+" "+posv+" "+NetName)<<"\n";}
         v = v->parent;
     }
     
 }
 
-void printTree(tree*t,std::vector<std::string>*segment)
+void printTree(tree*t,std::string &NetName,std::vector<std::string>*segment)
 {
     for(auto leaf:t->leaf){
         if(!leaf->IsSingle()&&leaf->p.lay!=-1)
-            backTrackPrint(leaf,segment);
+            backTrackPrint(leaf,NetName,segment);
     }
 }
 void PrintAll(Graph*graph,std::vector<std::string>*segment)
 {
     for(int i = 1;i<=graph->Nets.size();i++){
         auto t = graph->getTree(i);
-        printTree(t,segment);
+        printTree(t,graph->getNet(i).netName,segment);
     }
 }
 

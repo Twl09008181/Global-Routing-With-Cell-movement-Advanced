@@ -1,10 +1,6 @@
 #include "header/graph.hpp"
 #include "header/Routing.hpp"
 #include "header/TwoPinNet.hpp"
-int LAYER_SEARCH_RANGE =3;
-float ESCAPE_W = 10;
-float VIA_W = 1;
-
 
 Graph* graph = nullptr;
 
@@ -300,11 +296,13 @@ void RoutingSchedule(Graph*graph)
 {
     graph->placementInit();
 
-    CellInst* movCell;
+    
     int mov = 0;
     int success = 0;
-    while( (movCell = graph->cellMoving()))//到時候可改多個Cell移動後再reroute,就把net用set收集後再一起reroute
-    {
+    std::pair<std::string,CellInst*>movcellPair;
+    while( (movcellPair = graph->cellMoving()).second )//到時候可改多個Cell移動後再reroute,就把net用set收集後再一起reroute
+    {   
+        CellInst* movCell = movcellPair.second;
         mov++;
         bool movingsuccess = true;
         std::vector<tree*>netTrees(movCell->nets.size(),nullptr);
@@ -312,9 +310,7 @@ void RoutingSchedule(Graph*graph)
         //Reroute all net related to this Cell
         int LastSuccess = 0;
         //std::cout<<"------Starting-------\n";
-        //show_demand(graph);
-        // std::cout<<"accept or not?\n";
-        // std::cin>>accept;
+        std::cout<<movcellPair.first<<" "<<movCell->row<<" "<<movCell->col<<"\n";
 
         for(int i = 0;i<movCell->nets.size();i++)//scan net
         {
@@ -371,6 +367,7 @@ void RoutingSchedule(Graph*graph)
     }
     std::cout<<"final demand:\n";
     show_demand(graph);
+    PrintAll(graph);
     std::cout<<"count = "<<mov<<"\n";
     std::cout<<"sucess = "<<success<<"\n";
 }

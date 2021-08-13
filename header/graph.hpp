@@ -78,7 +78,7 @@ public:
         return Layers.at(Lay-1);
     }
 	void showEffectedNetSize();
-	CellInst* cellMoving();
+	std::pair<std::string,CellInst*>cellMoving();
 	void placementInit();
 //--------------------------------------------Data Mmeber------------------------------------------------------------
     std::unordered_map<std::string,MasterCell*>mCell;
