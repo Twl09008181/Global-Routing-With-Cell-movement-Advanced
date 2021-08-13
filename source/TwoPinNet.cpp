@@ -78,6 +78,7 @@ void MultiLayerPoint(node*pin,std::map<std::string,std::set<int>>&PointMap,TwoPi
                         exit(1);
                     }
                     pin->routing_tree->addNode(n);
+                    pin->connect(n);
                 }
                 else{
                     n = pin;//for single grid pin

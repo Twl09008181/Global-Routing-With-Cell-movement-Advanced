@@ -147,6 +147,7 @@ void Graph::parser(std::string fileName){
     }
 
     //--------------------------------------------------------BlkgDemand---------------------------------------------------------------
+    int totalBlkg = 0;
     for (auto cell:CellInsts)//cell is string:value tpye
     {
         CellInst* c = cell.second;
@@ -156,8 +157,10 @@ void Graph::parser(std::string fileName){
         {
             MasterCell::Blkg b = blkg.second;
             (*this)(row,col,b.first).demand += b.second;
+            totalBlkg+=b.second;
         }
     }
+    std::cout<<"Total Blkg = "<<totalBlkg<<"\n";
     //------------------------------------------------------Initial Routing------------------------------------------------------------
     is >> type >> value;
     routingTree.reserve(Nets.size());

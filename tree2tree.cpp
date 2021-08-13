@@ -15,6 +15,11 @@ void Init( std::string path,std::string fileName)
 }
 
 void RoutingSchedule(Graph*graph);
+class minCost{
+public:
+    minCost() = default;
+    bool operator()(const node* n1,const node*n2){return n1->cost > n2->cost;}
+};
 
 int main(int argc, char** argv)
 {
@@ -28,126 +33,211 @@ int main(int argc, char** argv)
 
     Init(path,fileName);    
 
-    // std::cout<<"graph Init done!\n";
+    std::cout<<"graph Init done!\n";
     // std::cout<<"Inital routing demand:\n";
-    //show_demand(graph);
+    show_demand(graph);
+
+    
+
+    RoutingSchedule(graph);
 
 
+    // PrintAll(graph);
 
-    //Expand testing
-    // for(int i = 1;i<=graph->Nets.size();i++)
-    // {
-    //     int OriginDmd = show_demand(graph,false); 
-    //     RipUpNet(graph,&graph->getNet(i),graph->getTree(i));
-    //     //show_demand(graph);
-    //     ExpandTree(graph->getTree(i));
-    //     AddingNet(graph,&graph->getNet(i),graph->getTree(i));
-    //     int ExpandDmd = show_demand(graph,false);
-    //     if(ExpandDmd!=OriginDmd)
-    //     {
-    //         std::cerr<<"error : Dmd dosen't match!\n";
-    //         exit(1);
-    //     }
-    //     std::cout<<i<<"\n";
-    // }
-    // std::cout<<"check done!\n";
-
-
-    //RoutingSchedule(graph);
-
-
-    // auto t = graph->getTree(1);
-    // for(auto endpoint:t->EndPoint)
-    // {
-    //     std::cout<<endpoint->row<<" "<<endpoint->col<<" "<<endpoint->lay<<"\n";
-    // }
+ 
     delete graph;
 	return 0;
 }
 
-
-void LabelIntree(node*v)
+bool IsIntree(Graph*graph,Net*net,node*v)
 {
-    do
+    auto &grid = (*graph)(v->p.row,v->p.col,v->p.lay);
+    return grid.enrollNet == net;
+}
+void LabelIntree(Graph*graph,Net*net,node*v,std::unordered_map<std::string,bool>&t1Point)
+{
+    while(v)
     {
-        v->IsIntree = true;
+        //std::cout<<v->p<<"\n";
+        auto &grid = (*graph)(v->p.row,v->p.col,v->p.lay);
+        if(t1Point.find(pos2str(v->p))!=t1Point.end())break;
+        Enroll(grid,net);
         v = v->parent;
-    }while(v->parent&&!v->parent->IsIntree);
+    }
 }
 
 
-bool accept;
-//routing interface必須有 繞線失敗就 recover demand 的功能
-tree* Tree2Tree(Graph*graph,Net*net,tree*t1,tree*t2)
+
+
+node* Search(Graph*graph,Net*net,node *v,const pos&delta,std::unordered_map<std::string,float>&gridCost)
 {
-    if(t1==t2)return t1;//pre check
+    //Dir checking
+    if(delta.row!=0&&v->p.lay%2==1){return nullptr;}//error routing dir
+    if(delta.col!=0&&v->p.lay%2==0){return nullptr;}//error routing dir
 
-
-    //bool accept = false;//設定false來測試Rip up機制
-
-    //bool accept = true;
-
+    //Boundary checking
+    pos P = {v->p.row+delta.row,v->p.col+delta.col,v->p.lay+delta.lay};
+    if(P.row<graph->RowBound().first||P.row>graph->RowBound().second){return nullptr;} //RowBound checking
+    if(P.col<graph->ColBound().first||P.col>graph->ColBound().second){return nullptr;} //ColBound checking
+    if(P.lay<net->minLayer||P.lay>graph->LayerNum()){return nullptr;}//minLayer checking
     
-    //routing procedure---------------------------------------- 還沒完成 差這裡而已了
-
-    //Step 1 Target all Ggrid of tree2
-    TargetNet(graph,net,t2);//target 
-
-    //Step2 Expand all Ggrid of tree1 
-    //ExpandTree(t1);//是不是每次都需要Expand 再討論,或者一開始expand就好了
-
-    //Step 3 dijkstra   (還要設計cost function canroute等function)
-    std::priority_queue<node*>Q;
+    //Capacity checking
+    Ggrid& g = (*graph)(P.row,P.col,P.lay);
+    bool enough = (g.enrollNet==net)? true : g.get_remaining(); 
+    if(!enough)return nullptr;
 
 
-    //這邊用unordermap做search 存posstr,cost (存grid的前一個cost)
-    std::unordered_map<std::string,float>gridCost;
-
-    for(auto n:t1->all){//全部丟入Q    
-        n->cost = 0;//setting cost = 0
-        Q.push(n);//using n->cost
-        gridCost[pos2str(n->p)] = 0;
-    }
-
-    //Step 3 繞出來則設定sucess = true  然後  routing只存segment point (要backtrace 回去)
+    //Caculate Cost    
+    std::string str = pos2str(P);
+    float lastCost = (gridCost.find(str)==gridCost.end())? FLT_MAX:gridCost[str];
+    float pf = graph->getLay(P.lay).powerFactor;
+    float weight = net->weight;
     
-    //"每次都要新增新的node而不是原本的,就算是目標也一樣"
-    //概念如下:
-    //使用"找到t2的那個點"(不是t2) 做backtrack直到 到了一個inTree的點 這段全部tag為intree
-    //然後新增一個跟t2的那個點一樣的node,把他加入tree,然後用那個點對她做connect
-    //然後進行clear not inTree的動作
+    node * n = new node(P);
+    n->cost = (g.enrollNet==net)? 0:weight*pf+v->cost; //enroll只有在確定繞線完成時才加入
 
-    //if failed, set success to false 
-    
-    //else 
-    //LabelIntree(v); v是新增的t2的那個點
-
-    //clear not Intree
-    for(auto n:t1->all)//要確認一下是否能在迴圈中移除node,vector一定不行,linked list不一定
+    if(n->cost<lastCost)
     {
-        if(!n->IsIntree){
-            t1->all.remove(n);
-            t1->leaf.erase(n);
-            //還要記的delete掉
+        v->routing_tree->addNode(n);
+        v->connect(n);
+        gridCost[str] = n->cost;
+    }
+    else{
+        delete n;
+        n = nullptr;
+    }
+    return n;
+}
+
+bool AssingPesudo(Graph*graph,Net*net,node*n)
+{
+    //std::cout<<"Assign pesudo!\n";
+    float Bestcost = FLT_MAX;
+    int bestLay = net->minLayer;
+    for(int i = net->minLayer;i<=graph->LayerNum();i++)
+    {
+        auto grid = (*graph)(n->p.row,n->p.col,i);
+        int netcost = 0;
+        if(grid.enrollNet==net)
+        {
+            n->p.lay = i;
+            return true;
+        }
+        else 
+            netcost = 1/(1+exp2(grid.get_remaining()));
+        if(netcost<Bestcost)
+        {
+            Bestcost = netcost;
+            n->p.lay = i;
         }
     }
-    //進行 Shrink
-    //Shrink(t1); //不需要,要用的話每次都要expand
+
+    if(n->p.lay==-1){return false;}
+    if((*graph)(n->p.row,n->p.col,n->p.lay).get_remaining()==0){return false;}
+
+    (*graph)(n->p.row,n->p.col,n->p.lay).enrollNet = net;
+    return true;
+}
 
 
-
-    
-    //future : 
+   //future : 
     //1. bounding box
     //2. multicore of two-pin-nets
+tree* Tree2Tree(Graph*graph,Net*net,tree*t1,tree*t2)
+{
+    if(t1==t2)return t1;//precheck
+
+    //std::cout<<"routing t1\n";
+    // for(auto n:t1->all)
+    // {
+    //     std::cout<<n->p<<"\n";
+    // }
+    // std::cout<<"routing t2\n";
+    //   for(auto n:t2->all)
+    // {
+    //     std::cout<<n->p<<"\n";
+    // }
+
+    //std::cout<<"Step1\n";
+    //Step 1 Setting Target&Source 
+    TargetTree(graph,net,t2);
+    SourceTree(graph,net,t1);
+ 
+
+    //std::cout<<"Step2\n";
+    //Step 2 Prepare Q
+    std::priority_queue<node*,std::vector<node*>,minCost>Q;
+    std::unordered_map<std::string,float>gridCost;//再想想要放哪
+    std::unordered_map<std::string,bool>t1Point;//用來backtrack
+
+    //Multi Source
+    bool InitSource = true;
+    for(auto n:t1->all){//全部丟入Q  
+        if(n->p.lay==-1){ 
+           if(!(InitSource = AssingPesudo(graph,net,n)))
+            break;
+        }  
+        n->cost = 0;
+        Q.push(n);
+        gridCost[pos2str(n->p)] = 0;
+        t1Point[pos2str(n->p)] = true;
+    }
+    //std::cout<<"Step3\n";
+    //Step 3 Search
+    node *targetPoint = nullptr;
+    while(!Q.empty()&&!targetPoint&&InitSource)
+    {
+        node * v = Q.top();Q.pop();
+        if((*graph)(v->p.row,v->p.col,v->p.lay).isTarget)//find
+        {
+            targetPoint = v;
+            break;
+        }
+        node * u = nullptr;
+        if(u = Search(graph,net,v,{0,0,1},gridCost)) //up
+            Q.push(u);
+        if(u = Search(graph,net,v,{0,0,-1},gridCost))//down
+            Q.push(u);
+        if(u = Search(graph,net,v,{0,1,0},gridCost))//-col
+            Q.push(u);
+        if(u = Search(graph,net,v,{0,-1,0},gridCost))//+col
+            Q.push(u);
+        if(u = Search(graph,net,v,{1,0,0},gridCost))//+row
+            Q.push(u);
+        if(u = Search(graph,net,v,{-1,0,0},gridCost))//-row
+            Q.push(u);
+        // std::cout<<v->p<<"\n";
+    }
+
+    //Untarget
+    UntargetTree(graph,net,t2);
 
 
-    //routing procedure----------------------------------------
+    //std::cout<<"Step4\n";
+    //Step 4
+    if(targetPoint){
+        //std::cout<<"success!\n";
+        LabelIntree(graph,net,targetPoint,t1Point);
+    }
+
+    //std::cout<<"Step5\n";
+    //clear not Intree
+    std::list<node*>recycle;
+    for(auto n:t1->all)//要確認一下是否能在迴圈中移除node,vector一定不行,linked list不一定
+    {
+        if(!IsIntree(graph,net,n)){
+            recycle.push_front(n);
+            t1->leaf.erase(n);
+        }
+    }
+    for(auto n:recycle)
+        t1->all.remove(n);
 
 
-    //繞線完成後要將t2當中的leaf,all加入倒t1當中 並回傳t1 ,如果失敗就回傳nullptr
-    if(accept){
+    //std::cout<<"Step6\n";
+    if(targetPoint){
         if(t1!=t2){
+            //std::cout<<"combine!\n";
             for(auto l:t2->leaf){
                 t1->leaf.insert(l);
                 l->routing_tree = t1;
@@ -155,11 +245,13 @@ tree* Tree2Tree(Graph*graph,Net*net,tree*t1,tree*t2)
             for(auto n:t2->all){
                 t1->all.push_back(n);
                 n->routing_tree = t1;
+                //std::cout<<n->p<<"\n";
             }
+            //std::cout<<"combine done!\n";
             t2->leaf.clear();
             t2->all.clear();
         }
-        return t1;
+        return t1;//繞線完成後要將t2當中的leaf,all加入倒t1當中 並回傳t1 ,如果失敗就回傳nullptr
     }
     else {
         return nullptr;
@@ -167,13 +259,20 @@ tree* Tree2Tree(Graph*graph,Net*net,tree*t1,tree*t2)
 }
 std::pair<tree*,bool> Reroute(Graph*graph,Net*net,TwoPinNets&twopins)
 {
+    //std::cout<<"init"<<"\n";
     int initdemand = TwoPinNetsInit(graph,net,twopins);//Init
+    //std::cout<<initdemand<<"\n";
+
     tree*T= nullptr;
     for(auto pins:twopins)
     {
-        T = Tree2Tree(graph,net,pins.first->routing_tree,pins.second->routing_tree);
+        //std::cout<<pins.first->p<<" "<<pins.second->p<<"\n";
+        if(initdemand!=-1)
+            T = Tree2Tree(graph,net,pins.first->routing_tree,pins.second->routing_tree);
+        
         if(!T) //把整個two-pin nets 繞線產生出來的tree全部collect成一棵回傳
         {
+            //std::cout<<"recycle!\n";
             std::set<tree*>collect;//set(避免duplicate delete)
             for(auto pins:twopins)
             {
@@ -189,86 +288,92 @@ std::pair<tree*,bool> Reroute(Graph*graph,Net*net,TwoPinNets&twopins)
             return {CollectTree,false};
         }
     }
+
+    //if Success
+    //printTree(T);
+    UnRegisterTree(graph,net,T);
+    AddingNet(graph,net,T);
     return {T,true};
 }
 
-// void RoutingSchedule(Graph*graph)
-// {
-//     graph->placementInit();
+void RoutingSchedule(Graph*graph)
+{
+    graph->placementInit();
 
-//     CellInst* movCell;
-//     int mov = 0;
-//     int success = 0;
-//     while( (movCell = graph->cellMoving()))//到時候可改多個Cell移動後再reroute,就把net用set收集後再一起reroute
-//     {
-//         mov++;
-//         bool movingsuccess = true;
-//         std::vector<tree*>netTrees(movCell->nets.size(),nullptr);
+    CellInst* movCell;
+    int mov = 0;
+    int success = 0;
+    while( (movCell = graph->cellMoving()))//到時候可改多個Cell移動後再reroute,就把net用set收集後再一起reroute
+    {
+        mov++;
+        bool movingsuccess = true;
+        std::vector<tree*>netTrees(movCell->nets.size(),nullptr);
 
-//         //Reroute all net related to this Cell
-//         int lastFaileIdx = 0;
-//         std::cout<<"------Starting-------\n";
-//         show_demand(graph);
-//         std::cout<<"accept or not?\n";
-//         std::cin>>accept;
+        //Reroute all net related to this Cell
+        int LastSuccess = 0;
+        //std::cout<<"------Starting-------\n";
+        //show_demand(graph);
+        // std::cout<<"accept or not?\n";
+        // std::cin>>accept;
 
-//         for(int i = 0;i<movCell->nets.size();i++)
-//         {
-//             auto net = movCell->nets.at(i); 
-//             RipUpNet(graph,net);
-//             TwoPinNets twopins;
-//             get_two_pins(twopins,*net);
-//             auto result = Reroute(graph,net,twopins);
-//             netTrees.at(i) = result.first;
-
-//             if(result.second==false)
-//             {
-//                 lastFaileIdx = i;
-//                 movingsuccess = false;
-//                 break;
-//             }
-//         }
-//         if(movingsuccess)//replace old tree
-//         {
-//             std::cout<<"updating!\n";
-//             for(int i = 0;i<movCell->nets.size();i++)
-//             {
-//                 int NetId = std::stoi(movCell->nets.at(i)->netName.substr(1,-1));
-//                 graph->updateTree(NetId,netTrees.at(i));
-//             }
-//             success++;
-//         }
-//         else{///failed recover old tree demand
+        for(int i = 0;i<movCell->nets.size();i++)//scan net
+        {
+            //std::cout<<i<<"\n";
+            auto net = movCell->nets.at(i); 
+            RipUpNet(graph,net);
+            TwoPinNets twopins;
+            get_two_pins(twopins,*net);
+            auto result = Reroute(graph,net,twopins);
+            netTrees.at(i) = result.first;
+            if(result.second==false)
+            {
+                LastSuccess = i-1;
+                movingsuccess = false;
+                break;
+            }
+        }
+        if(movingsuccess)//replace old tree
+        {
+            std::cout<<"success!\n";
+            //std::cout<<"updating!\n";
+            for(int i = 0;i<movCell->nets.size();i++)
+            {
+                int NetId = std::stoi(movCell->nets.at(i)->netName.substr(1,-1));
+                graph->updateTree(NetId,netTrees.at(i));
+            }
+            success++;
+        }
+        else{///failed recover old tree demand
             
-//             std::cout<<"Before ripup\n";
-//             show_demand(graph);
-//             //RipUp 這次繞線
-//             for(int i = 0;i<=lastFaileIdx;i++)
-//             {
-//                 auto &net = movCell->nets.at(i);
-//                 RipUpNet(graph,net,netTrees.at(i));//recover demand
-//             }
+            //std::cout<<"Before ripup\n";
+            //show_demand(graph);
+            //RipUp 這次繞線
+            for(int i = 0;i<=LastSuccess;i++)//這邊到時候也有問題 因為要設計成成功才加demand
+            {
+                auto &net = movCell->nets.at(i);
+                RipUpNet(graph,net,netTrees.at(i));//recover demand
+            }
             
-//             std::cout<<"After ripup\n";
-//             show_demand(graph);
+            //std::cout<<"After ripup\n";
+            //show_demand(graph);
 
-//             for(int i = 0;i<=lastFaileIdx;i++){delete netTrees.at(i);}//delete 
+            for(int i = 0;i<=LastSuccess;i++){delete netTrees.at(i);}//delete 
 
-//             //重新復原demand
-//             for(int i = 0;i<=lastFaileIdx;i++)
-//             {
-//                 auto &net = movCell->nets.at(i);
-//                 AddingNet(graph,net);//recover demand
-//             }
-//         }
-//         std::cout<<"After routing!\n";
-//         show_demand(graph);
-//     }
-//     std::cout<<"final demand:\n";
-//     show_demand(graph);
-//     std::cout<<"count = "<<mov<<"\n";
-//     std::cout<<"sucess = "<<success<<"\n";
-// }
+            //重新復原demand
+            for(int i = 0;i<=LastSuccess;i++)
+            {
+                auto &net = movCell->nets.at(i);
+                AddingNet(graph,net);//recover demand
+            }
+        }
+        std::cout<<"After routing!\n";
+        show_demand(graph);
+    }
+    std::cout<<"final demand:\n";
+    show_demand(graph);
+    std::cout<<"count = "<<mov<<"\n";
+    std::cout<<"sucess = "<<success<<"\n";
+}
 
 
 
