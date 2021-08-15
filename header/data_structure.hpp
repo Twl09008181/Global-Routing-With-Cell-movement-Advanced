@@ -75,8 +75,16 @@ struct Ggrid{
         if(capacity==0)return 1; //以免 / 0 error.
         return (float)demand/capacity;
     }
-    void add_demand(){demand+=1; if(demand>capacity){std::cerr<<row<<","<<col<<","<<lay<<" overflow!!\n";exit(1);}}
-    void delete_demand(){using std::max;demand = max(demand-1,0);}
+    void add_demand(int dmd=1){demand+=dmd; if(demand>capacity){std::cerr<<row<<","<<col<<","<<lay<<" overflow!!\n";exit(1);}}
+    void delete_demand(int dmd = 1){
+        using std::max;
+        if(demand<dmd)
+        {
+            std::cout<<"delete_demand error!!\n";
+            exit(1);
+        }
+        demand = max(demand-dmd,0);
+    }
 //----------------------------------Data Member----------------------------------------------
     int capacity;
     int demand;

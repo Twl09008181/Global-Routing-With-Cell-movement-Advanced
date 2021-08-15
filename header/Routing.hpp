@@ -196,4 +196,18 @@ void PrintAll(Graph*graph,std::vector<std::string>*segment=nullptr);
 //two pin net (untested)
 int TwoPinNetsInit(Graph*graph,Net*net,TwoPinNets&pinset);
 int MovTwoPinNetsInit(Graph*graph,Net*net,TwoPinNets&pinset);//testing
+
+
+
+
+//Routing Interface
+std::pair<tree*,bool> Reroute(Graph*graph,Net*net,TwoPinNets&twopins);
+
+
+
+
+
+
+
+
 #endif

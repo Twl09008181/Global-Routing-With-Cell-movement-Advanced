@@ -308,13 +308,15 @@ std::pair<std::string,CellInst*> Graph::cellMoving(){
 		auto [gain, cellId, voltageId] = candiPq.top();
 		candiPq.pop();
 		CellInst* cell = CellInsts["C" + std::to_string(cellId)];
+
+        //std::cout<<"Remov!\n";
         removeCellsBlkg(cell);
 
 		if(validMovement(cell, voltageId)){
 			cell->row = voltageAreas[cell->vArea][voltageId].first;
 			cell->col = voltageAreas[cell->vArea][voltageId].second;
             if(!insertCellsBlkg(cell)){
-				removeCellsBlkg(cell);
+				//removeCellsBlkg(cell);
 				cell->row = cell->originalRow;
 				cell->col = cell->originalCol;
 			}else return {"C" + std::to_string(cellId),cell};
@@ -368,7 +370,7 @@ void Graph::placementInit(){
 bool Graph::removeCellsBlkg(CellInst* cell){	
 	for(auto [name, blkg] : cell->mCell->blkgs){
 		auto& grid = (*this)(cell->row, cell->col, blkg.first);
-		grid.demand -= blkg.second;
+		grid.delete_demand(blkg.second);
 	}
 	return true;
 }
@@ -376,8 +378,8 @@ bool Graph::removeCellsBlkg(CellInst* cell){
 bool Graph::insertCellsBlkg(CellInst* cell){
 	for(auto [name, blkg] : cell->mCell->blkgs){
 		auto& grid = (*this)(cell->row, cell->col, blkg.first);
-		grid.demand += blkg.second;
-		if(grid.get_remaining() < 0) return false;
+        if(grid.get_remaining()<blkg.second)return false;
+		grid.add_demand(blkg.second);
 	}
 	return true;
 }
