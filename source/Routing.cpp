@@ -311,22 +311,22 @@ void ExpandTree(tree*t)
 
 
 
-bool IsIntree(Graph*graph,Net*net,node*v)
-{
-    auto &grid = (*graph)(v->p.row,v->p.col,v->p.lay);
-    return grid.enrollNet == net;
+bool IsIntree(Graph*graph,Net*net,node*v,std::unordered_map<node*,bool>&t1Point)
+{  
+    return t1Point.find(v)!=t1Point.end();
 }
-void LabelIntree(Graph*graph,Net*net,node*v,std::unordered_map<std::string,bool>&t1Point)
+void LabelIntree(Graph*graph,Net*net,node*v,std::unordered_map<node*,bool>&t1Point)
 {
     while(v)
     {
         auto &grid = (*graph)(v->p.row,v->p.col,v->p.lay);
-        if(t1Point.find(pos2str(v->p))!=t1Point.end())break;
+        if(t1Point.find(v)!=t1Point.end())break;
+        t1Point.insert({v,true});
         Enroll(grid,net);
         v = v->parent;
     }
 }
-node* Search(Graph*graph,Net*net,node *v,const pos&delta,std::unordered_map<std::string,float>&gridCost)
+node* Search(Graph*graph,Net*net,node *v,const pos&delta,std::unordered_map<std::string,float>&gridCost,tree*tmp)
 {
     //Dir checking
     if(delta.row!=0&&v->p.lay%2==1){return nullptr;}//error routing dir
@@ -351,11 +351,11 @@ node* Search(Graph*graph,Net*net,node *v,const pos&delta,std::unordered_map<std:
     float weight = net->weight;
     
     node * n = new node(P);
-    n->cost = (g.enrollNet==net)? 0:weight*pf+v->cost; //enroll只有在確定繞線完成時才加入
+    n->cost = (g.enrollNet==net)? 0:weight*pf+v->cost;
 
     if(n->cost<lastCost)
     {
-        v->routing_tree->addNode(n);
+        tmp->addNode(n);
         v->connect(n);
         gridCost[str] = n->cost;
     }
@@ -365,34 +365,24 @@ node* Search(Graph*graph,Net*net,node *v,const pos&delta,std::unordered_map<std:
     }
     return n;
 }
-bool AssingPesudo(Graph*graph,Net*net,node*n)
+
+
+
+void combine(tree*t1,tree*t2)
 {
-    //std::cout<<"Assign pesudo!\n";
-    float Bestcost = FLT_MAX;
-    int bestLay = net->minLayer;
-    for(int i = net->minLayer;i<=graph->LayerNum();i++)
+    for(auto l:t2->leaf)
     {
-        auto grid = (*graph)(n->p.row,n->p.col,i);
-        int netcost = 0;
-        if(grid.enrollNet==net)
-        {
-            n->p.lay = i;
-            return true;
-        }
-        else 
-            netcost = 1/(1+exp2(grid.get_remaining()));
-        if(netcost<Bestcost)
-        {
-            Bestcost = netcost;
-            n->p.lay = i;
-        }
+        t1->leaf.insert(l);
+        l->routing_tree = t1;
     }
-
-    if(n->p.lay==-1){return false;}
-    if((*graph)(n->p.row,n->p.col,n->p.lay).get_remaining()==0){return false;}
-
-    (*graph)(n->p.row,n->p.col,n->p.lay).enrollNet = net;
-    return true;
+    for(auto n:t2->all)
+    {
+        t1->all.push_back(n);
+        n->routing_tree = t1;
+    }
+    t2->all.clear();
+    t2->leaf.clear();
+    delete t2;
 }
 tree* Tree2Tree(Graph*graph,Net*net,tree*t1,tree*t2)
 {
@@ -407,17 +397,16 @@ tree* Tree2Tree(Graph*graph,Net*net,tree*t1,tree*t2)
     //std::cout<<"Step2\n";
     //Step 2 Prepare Q
     std::priority_queue<node*,std::vector<node*>,minCost>Q;
-    std::unordered_map<std::string,float>gridCost;//再想想要放哪
-    std::unordered_map<std::string,bool>t1Point;//用來backtrack
+    std::unordered_map<std::string,float>gridCost;
+    std::unordered_map<node*,bool>t1Point;//用來判斷isIntree
     std::unordered_map<std::string,node*>t2Pesudo;//用來update two-pin-net sets...
 
     //Multi Source
-    bool InitSource = true;
-    for(auto n:t1->all){//全部丟入Q    //至此12,27 1仍為leaf
+    for(auto n:t1->all){//全部丟入Q 
         n->cost = 0;
         Q.push(n);
         gridCost[pos2str(n->p)] = 0;
-        t1Point[pos2str(n->p)] = true;
+        t1Point[n] = true;
     }
     bool t2IsPesudo = false;
     for(auto n:t2->all){
@@ -432,38 +421,28 @@ tree* Tree2Tree(Graph*graph,Net*net,tree*t1,tree*t2)
     //std::cout<<"Step3\n";
     //Step 3 Search
     node *targetPoint = nullptr;
-    while(!Q.empty()&&!targetPoint&&InitSource)
+    tree* tmp = new tree;
+    while(!Q.empty()&&!targetPoint)
     {
         node * v = Q.top();Q.pop();
         if((*graph)(v->p.row,v->p.col,v->p.lay).isTarget)//find
         {
             std::string twoDpos = std::to_string(v->p.row)+" "+std::to_string(v->p.col);
             targetPoint = v;
-            if(t2Pesudo.find(twoDpos)!=t2Pesudo.end())
-            {
-                t2Pesudo[twoDpos]->p = v->p;
-            }
+            if(t2Pesudo.find(twoDpos)!=t2Pesudo.end()){t2Pesudo[twoDpos]->p = v->p;}//updating pesudo-pin
             break;
         }
         node * u = nullptr;
-        if(u = Search(graph,net,v,{0,0,1},gridCost)) //up
-            Q.push(u);
-        if(u = Search(graph,net,v,{0,0,-1},gridCost))//down
-            Q.push(u);
-        if(u = Search(graph,net,v,{0,1,0},gridCost))//-col
-            Q.push(u);
-        if(u = Search(graph,net,v,{0,-1,0},gridCost))//+col
-            Q.push(u);
-        if(u = Search(graph,net,v,{1,0,0},gridCost))//+row
-            Q.push(u);
-        if(u = Search(graph,net,v,{-1,0,0},gridCost))//-row
-            Q.push(u);
-        // std::cout<<v->p<<"\n";
+        if(u = Search(graph,net,v,{0,0,1},gridCost,tmp))Q.push(u); //up
+        if(u = Search(graph,net,v,{0,0,-1},gridCost,tmp))Q.push(u);//down
+        if(u = Search(graph,net,v,{0,1,0},gridCost,tmp))Q.push(u);//-col
+        if(u = Search(graph,net,v,{0,-1,0},gridCost,tmp))Q.push(u);//+col
+        if(u = Search(graph,net,v,{1,0,0},gridCost,tmp))Q.push(u);//+row
+        if(u = Search(graph,net,v,{-1,0,0},gridCost,tmp))Q.push(u);//-row
     }
 
     //Untarget
     UntargetTree(graph,net,t2);
-
     if(t2IsPesudo)
     {
         tree *  pesudoClear = new tree;
@@ -477,50 +456,34 @@ tree* Tree2Tree(Graph*graph,Net*net,tree*t1,tree*t2)
         delete pesudoClear;
     }
 
-
-    //std::cout<<"Step4\n";
-    //Step 4
-    if(targetPoint){//and still need update the t2....
-        //std::cout<<"success!\n";
-        LabelIntree(graph,net,targetPoint,t1Point);
-    }
-
-    //std::cout<<"Step5\n";
-    //clear not Intree
-    std::list<node*>recycle;
-    for(auto n:t1->all)//要確認一下是否能在迴圈中移除node,vector一定不行,linked list不一定
-    {
-        if(!IsIntree(graph,net,n)){
-            recycle.push_front(n);
-            t1->leaf.erase(n);
-            t1->leaf.insert(n->parent);  //Bug Fix!!!
-        }
-    }
-    for(auto n:recycle){
-        t1->all.remove(n);
-        t1->leaf.erase(n);
-    }
-
-    //std::cout<<"Step6\n";
+    //std::cout<<"Step4\n";//Step 4
     if(targetPoint){
-        if(t1!=t2){
-            //std::cout<<"combine!\n";
-            for(auto l:t2->leaf){
-                t1->leaf.insert(l);
-                l->routing_tree = t1;
+        LabelIntree(graph,net,targetPoint,t1Point);
+        std::set<node*>recycle;
+        for(auto n:tmp->all)
+        {
+            if(!IsIntree(graph,net,n,t1Point)){
+                recycle.insert(n);
+                if(n->parent)
+                tmp->leaf.insert(n->parent);
             }
-            for(auto n:t2->all){
-                t1->all.push_back(n);
-                n->routing_tree = t1;
-                //std::cout<<n->p<<"\n";
-            }
-            //std::cout<<"combine done!\n";
-            t2->leaf.clear();
-            t2->all.clear();
         }
-        return t1;//繞線完成後要將t2當中的leaf,all加入倒t1當中 並回傳t1 ,如果失敗就回傳nullptr
+        for(auto n:recycle){
+            tmp->all.remove(n);
+            tmp->leaf.erase(n);
+            for(auto c:n->child)
+            {
+                if(c->parent==n)
+                    c->parent = nullptr;
+            }
+            delete n;
+        }
+        combine(t1,tmp);
+        combine(t1,t2);
+        return t1;
     }
     else {
+        delete tmp;
         return nullptr;
     }
 }
@@ -534,10 +497,8 @@ std::pair<tree*,bool> Reroute(Graph*graph,Net*net,TwoPinNets&twopins)
     //std::cout<<"TwopinNet!\n";
     for(auto pins:twopins)
     {   
-        
         if(initdemand!=-1)
             T = Tree2Tree(graph,net,pins.first->routing_tree,pins.second->routing_tree);
-        
         if(!T) //把整個two-pin nets 繞線產生出來的tree全部collect成一棵回傳
         {
             std::set<tree*>collect;//set(避免duplicate delete)
@@ -552,17 +513,11 @@ std::pair<tree*,bool> Reroute(Graph*graph,Net*net,TwoPinNets&twopins)
                 for(node * pin : t->leaf){CollectTree->leaf.insert(pin);}//for rip-up
                 for(node * pin : t->all){CollectTree->all.push_front(pin);}//for delete
             }
-            //std::cout<<"EnrollNoCheck!\n";
-            TreeInterface(graph,net,EnrollNocheck,CollectTree);
-            net->routingState = Net::state::Routing;//
-            UnRegisterTree(graph,net,CollectTree);
-            net->routingState = Net::state::doneAdd;//
+            UnRegisterTree(graph,net,T);
             return {CollectTree,false};
         }
     }
     UnRegisterTree(graph,net,T);
     AddingNet(graph,net,T);
-    //net->routingState = Net::state::Routing;//
-    //UnRegisterTree(graph,net,T);
     return {T,true};
 }

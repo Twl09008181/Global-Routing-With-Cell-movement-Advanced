@@ -30,27 +30,6 @@ int main(int argc, char** argv)
     
     OnlyRouting(graph,fileName);
     //RoutingWithCellMOV(graph,fileName);
-
-
-    
-
-    // float avgTreeNum = 0;
-
-    // for(int i = 1;i<=graph->Nets.size();i++){
-    //     auto &net= graph->getNet(i);
-    //     TwoPinNets twopin;
-    //     get_two_pins(twopin,net);
-
-    //     std::set<tree*>TreeRecord;
-    //     for(auto pins:twopin)
-    //     {
-    //         //std::cout<<pins.first->p<<" "<<pins.second->p<<"\n";
-    //         TreeRecord.insert(pins.first->routing_tree);
-    //         TreeRecord.insert(pins.second->routing_tree);
-    //     }
-    //     avgTreeNum+=TreeRecord.size();
-    // }
-    // std::cout<<avgTreeNum/graph->Nets.size()<<"\n";
  
     delete graph;
 	return 0;
@@ -62,7 +41,7 @@ void OnlyRouting(Graph*graph,std::string fileName)
 {
 
     int bestDmd = show_demand(graph);
-    for(int i = 1;i<=graph->Nets.size();i++)
+    for(int i = graph->Nets.size();i>=1;i--)
     {
         auto &net = graph->getNet(i);
         RipUpNet(graph,&net);
@@ -72,15 +51,17 @@ void OnlyRouting(Graph*graph,std::string fileName)
         tree * netTree = result.first;
         if(result.second==false)
         {
-           net.routingState = Net::state::CanAdd;
            delete netTree;
+           net.routingState = Net::state::Routing;
+           UnRegisterTree(graph,&net,graph->getTree(i));
+           net.routingState = Net::state::CanAdd;
            AddingNet(graph,&net);//recover demand
         }
         else{
             graph->updateTree(i,netTree);
         }
-        std::cout<<"After routing!\n";
-        int dmd = show_demand(graph);
+        //std::cout<<"After routing!\n";
+        int dmd = show_demand(graph,true);
         if(dmd<bestDmd)
         {
             bestDmd = dmd;

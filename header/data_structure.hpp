@@ -81,8 +81,10 @@ struct Ggrid{
         if(demand<dmd)
         {
             std::cout<<"delete_demand error!!\n";
+            std::cout<<row<<" "<<col<<" "<<lay<<"\n";
             exit(1);
         }
+
         demand = max(demand-dmd,0);
     }
 //----------------------------------Data Member----------------------------------------------
