@@ -99,6 +99,38 @@ struct tree{
     }
 };
 
+struct NetGrids
+{
+    NetGrids(int netId)
+    :NetId{netId}{}
+
+    bool AlreadyPass(Ggrid*grid)
+    {
+        return grids.find(grid)==grids.end() ? false:true;
+    }
+    void PassGrid(Ggrid*grid)
+    {
+        grids[grid] = false; //set to false
+    }
+    bool Add(Ggrid*grid)
+    {
+        if(!grids.at(grid))
+        {
+            if(grid->get_remaining())
+            {
+                grids.at(grid) = true;
+                grid->add_demand();
+            }
+            else{
+                return false;//canAdd
+            }
+        }
+        return true;//AlreadyAdd
+    }
+    std::unordered_map<Ggrid*,bool>grids;
+    int NetId;
+};
+
 using TwoPinNet = std::pair<node*,node*>;
 using TwoPinNets = std::list<TwoPinNet>;
 
@@ -107,85 +139,45 @@ using TwoPinNets = std::list<TwoPinNet>;
 
 
 //Ggrid callback function
-bool EnrollNocheck(Ggrid&g,Net*net);
-bool removedemand(Ggrid&grid,Net*net);
-bool addingdemand(Ggrid&grid,Net*net);
-bool Unregister(Ggrid&g,Net*net);
+bool passing(Ggrid*grid,NetGrids*net);//only for segment form (initial routing)
+bool target(Ggrid* g,NetGrids*net);
+bool Untarget(Ggrid* g,NetGrids*net);
 
-//Tree2Tree callback
-bool Enroll(Ggrid&grid,Net*net);
-bool target(Ggrid&g,Net*net);
-bool Untarget(Ggrid&g,Net*net);
-bool sourceInit(Ggrid&g,Net*net);
 
 //Ggrid Segment fun
-void Sgmt_Grid(Graph*graph,Net*net,node*v,node*u,bool(*f)(Ggrid&,Net*));
-void Backtrack_Sgmt_Grid(Graph*graph,Net*net,node*v,bool(*f)(Ggrid&,Net*));
+void Sgmt_Grid(Graph*graph,NetGrids*net,node*v,node*u,bool(*f)(Ggrid* ,NetGrids*));
+void Backtrack_Sgmt_Grid(Graph*graph,NetGrids*net,node*v,bool(*f)(Ggrid* ,NetGrids*));
 
 
 
-//node Segment fun
-void ExpandTree(tree*t);
-
-
-struct Par
-{
-    Par(bool (*f)(Ggrid&,Net*),Net::state s1 =Net::state::dontcare,Net::state s2 = Net::state::doneAdd )
-        :callback{f}
-    {
-        Stating[0] = s1;
-        Stating[1] = s2;
-    }
-    std::string warning;//warning
-    Net::state Stating[2];//[0]:invalid state , [1] :valid state , [2]: change state
-    bool (*callback)(Ggrid&,Net*);
-};
 
 //Tree interface
+
+void RipUpNet(Graph*graph,NetGrids*net);
+void AddingNet(Graph*graph,NetGrids*net);
+
 void RipUpAll(Graph*graph);
 void AddingAll(Graph*graph);
 
 
 
-void TreeInterface(Graph*graph,Net*net,Par par,tree* nettree=nullptr);
+void TreeInterface(Graph*graph,NetGrids*net,bool(*f)(Ggrid* ,NetGrids*),tree* nettree=nullptr);
 
 
-//RipUP and Adding
-inline void RipUpNet(Graph*graph,Net*net,tree*nettree=nullptr){
-    Par init(EnrollNocheck,Net::state::doneAdd,Net::state::RipUpinit);
-    init.warning = "Warning : Net.routing state must be  Net::state::doneAdd!!\n";
-    TreeInterface(graph,net,init,nettree);
-    Par ripup(removedemand,Net::state::RipUpinit,Net::state::CanAdd);
-    TreeInterface(graph,net,ripup,nettree);
-}
-inline void AddingNet(Graph*graph,Net*net,tree*nettree=nullptr){
-    Par init(addingdemand,Net::state::CanAdd,Net::state::doneAdd);
-    init.warning = "Warning : Net.routing state must be  Net::state::CanAdd!!\n";
-    TreeInterface(graph,net,init,nettree);
+// //RipUP and Adding
+// inline void RipUpNet(Graph*graph,NetGrids*net,tree*nettree=nullptr){
+//     TreeInterface(graph,net,removedemand,nettree);
+// }
+
+inline void AddSegment(Graph*graph,NetGrids*net,tree*nettree=nullptr){
+    TreeInterface(graph,net,passing,nettree);
 }
 
-//Tree2Tree
-inline void SourceTree(Graph*graph,Net*net,tree*nettree){
-    Par init(sourceInit,Net::state::Routing,Net::state::Routing);
-    init.warning = "Warning : Net.routing state must be  Net::state::Routing!!\n";
-    TreeInterface(graph,net,init,nettree);
+inline void TargetTree(Graph*graph,NetGrids*net,tree*nettree){
+    TreeInterface(graph,net,target,nettree);
 }
-inline void TargetTree(Graph*graph,Net*net,tree*nettree){
-    Par init(target,Net::state::Routing,Net::state::Routing);
-    init.warning = "Warning : Net.routing state must be  Net::state::Routing!!\n";
-    TreeInterface(graph,net,init,nettree);
-}
-inline void UntargetTree(Graph*graph,Net*net,tree*nettree){
-    Par init(Untarget,Net::state::Routing,Net::state::Routing);
-    init.warning = "Warning : Net.routing state must be  Net::state::Routing!!\n";
-    TreeInterface(graph,net,init,nettree);
-}
-
-//When Routing success
-inline void UnRegisterTree(Graph*graph,Net*net,tree*nettree){
-    Par init(Unregister,Net::state::Routing,Net::state::CanAdd);
-    init.warning = "Warning : Net.routing state must be  Net::state::Routing!!\n";
-    TreeInterface(graph,net,init,nettree);
+inline void UntargetTree(Graph*graph,NetGrids*net,tree*nettree){
+    TreeInterface(graph,net,Untarget,nettree);
 }
 
 // void backTrackPrint(node*v,Net*net,std::vector<std::string>*segment)
@@ -194,14 +186,13 @@ void backTrackPrint(Graph*graph,Net*net,node*v,std::vector<std::string>*segment=
 void printTree(Graph*graph,Net*net,tree*t,std::vector<std::string>*segment=nullptr);
 void PrintAll(Graph*graph,std::vector<std::string>*segment=nullptr);
 //two pin net (untested)
-int TwoPinNetsInit(Graph*graph,Net*net,TwoPinNets&pinset);
-int MovTwoPinNetsInit(Graph*graph,Net*net,TwoPinNets&pinset);//testing
+int TwoPinNetsInit(Graph*graph,NetGrids*net,TwoPinNets&pinset);
 
 
 
 
 //Routing Interface
-std::pair<tree*,bool> Reroute(Graph*graph,Net*net,TwoPinNets&twopins);
+std::pair<tree*,bool> Reroute(Graph*graph,NetGrids*net,TwoPinNets&twopins);
 
 
 

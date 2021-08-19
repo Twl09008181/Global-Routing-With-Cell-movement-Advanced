@@ -10,6 +10,7 @@
 #include "data_structure.hpp"
 struct tree;
 struct node;
+struct NetGrids;
 class Graph{
 public:
     Graph(std::string fileName);
@@ -68,12 +69,24 @@ public:
     {
         if(NetId<1||NetId>Nets.size())
         {
-            std::cout<<"Net& getNet(int NetId) input Error: 1<=NetId<="<<Nets.size()<<"\n";
+            std::cout<<"tree* getTree(int NetId) input Error: 1<=NetId<="<<Nets.size()<<"\n";
             exit(1);
         }
         return routingTree.at(NetId-1);
     }
+    NetGrids* getNetGrids(int NetId)
+    {
+        if(NetId<1||NetId>Nets.size())
+        {
+            std::cout<<"NetGrids* getNetGrids(int NetId) input Error: 1<=NetId<="<<Nets.size()<<"\n";
+            exit(1);
+        }
+        return netGrids.at(NetId-1);
+    }
     void updateTree(int NetId,tree*t);
+    void updateNetGrids(int NetId,NetGrids*netgrid);
+
+
     Layer& getLay(int Lay){
         return Layers.at(Lay-1);
     }
@@ -106,6 +119,7 @@ private:
 //---------------------------------------------RoutingTree-------------------------------------------------------------
 public:
     std::vector<tree*>routingTree;
+    std::vector<NetGrids*>netGrids;
 };
 
 

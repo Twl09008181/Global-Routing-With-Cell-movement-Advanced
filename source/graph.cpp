@@ -164,16 +164,14 @@ void Graph::parser(std::string fileName){
     //------------------------------------------------------Initial Routing------------------------------------------------------------
     is >> type >> value;
     routingTree.reserve(Nets.size());
+    netGrids.reserve(Nets.size());
     for(int i = 1;i<=Nets.size();i++)
     {
         routingTree.push_back(new tree);
-        if(this->getTree(i)==nullptr)
-        {
-            std::cerr<<"error!!\n";
-            exit(1);
-        }
+        netGrids.push_back(new NetGrids(i));
     }
-    for(int i = 1;i<=Nets.size();i++)
+
+    for(int i = 1;i<=Nets.size();i++)//預先讀取pin
     {
         auto &net = this->getNet(i);//NetId = i
         auto nettree = this->getTree(i);//NetId = i
@@ -192,6 +190,7 @@ void Graph::parser(std::string fileName){
         is >> r1 >> c1 >> l1 >> r2 >> c2 >> l2 >>type;
         int NetId = std::stoi(std::string(type.begin()+1,type.end()));
         auto nettree = this->getTree(NetId);
+        auto netgrids = this->getNetGrids(NetId);
         node* p1 = new node{pos{r1,c1,l1}};
         node* p2 = new node{pos{r2,c2,l2}};
         nettree->addNode(p1);nettree->addNode(p2);
@@ -199,8 +198,9 @@ void Graph::parser(std::string fileName){
     }
     for(int i = 1;i<=Nets.size();i++)
     {
-        auto &net = this->getNet(i);
-        AddingNet(this,&net);
+        auto netgrid = this->getNetGrids(i);
+        AddSegment(this,netgrid);
+        AddingNet(this,netgrid);
     }
     for(auto t:routingTree)
     {

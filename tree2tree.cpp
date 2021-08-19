@@ -27,8 +27,14 @@ int main(int argc, char** argv)
     std::cout<<"Inital routing demand:\n";
     show_demand(graph);
 
+    auto net1 = graph->getNetGrids(1);
+    RipUpNet(graph,net1);
+    show_demand(graph);
+    AddingNet(graph,net1);
+    show_demand(graph);
+
     
-    OnlyRouting(graph,fileName);
+    // OnlyRouting(graph,fileName);
     //RoutingWithCellMOV(graph,fileName);
  
     delete graph;
@@ -37,120 +43,120 @@ int main(int argc, char** argv)
 
 
 
-void OnlyRouting(Graph*graph,std::string fileName)
-{
+// void OnlyRouting(Graph*graph,std::string fileName)
+// {
 
-    int bestDmd = show_demand(graph);
-    for(int i = graph->Nets.size();i>=1;i--)
-    {
-        auto &net = graph->getNet(i);
-        RipUpNet(graph,&net);
-        TwoPinNets twopins;
-        get_two_pins(twopins,net);
-        auto result = Reroute(graph,&net,twopins);
-        tree * netTree = result.first;
-        if(result.second==false)
-        {
-           delete netTree;
-           net.routingState = Net::state::Routing;
-           UnRegisterTree(graph,&net,graph->getTree(i));
-           net.routingState = Net::state::CanAdd;
-           AddingNet(graph,&net);//recover demand
-        }
-        else{
-            graph->updateTree(i,netTree);
-        }
-        //std::cout<<"After routing!\n";
-        int dmd = show_demand(graph,true);
-        if(dmd<bestDmd)
-        {
-            bestDmd = dmd;
-            //OutPut(graph,fileName);
-        }
-    }
-    OutPut(graph,fileName,{});
-}
+//     int bestDmd = show_demand(graph);
+//     for(int i = graph->Nets.size();i>=1;i--)
+//     {
+//         auto &net = graph->getNet(i);
+//         RipUpNet(graph,&net);
+//         TwoPinNets twopins;
+//         get_two_pins(twopins,net);
+//         auto result = Reroute(graph,&net,twopins);
+//         tree * netTree = result.first;
+//         if(result.second==false)
+//         {
+//            delete netTree;
+//            net.routingState = Net::state::Routing;
+//            UnRegisterTree(graph,&net,graph->getTree(i));
+//            net.routingState = Net::state::CanAdd;
+//            AddingNet(graph,&net);//recover demand
+//         }
+//         else{
+//             graph->updateTree(i,netTree);
+//         }
+//         //std::cout<<"After routing!\n";
+//         int dmd = show_demand(graph,true);
+//         if(dmd<bestDmd)
+//         {
+//             bestDmd = dmd;
+//             //OutPut(graph,fileName);
+//         }
+//     }
+//     OutPut(graph,fileName,{});
+// }
 
-void RoutingWithCellMOV(Graph*graph,std::string fileName)
-{
-    graph->placementInit();
-    std::vector<std::string>movingCellInfo;
-    int mov = 0;
-    int success = 0;
-    std::pair<std::string,CellInst*>movcellPair;
-    while( (movcellPair = graph->cellMoving()).second )//
-    {   
-        mov++;
-        CellInst* movCell = movcellPair.second;
-        bool movingsuccess = true;
+// void RoutingWithCellMOV(Graph*graph,std::string fileName)
+// {
+//     graph->placementInit();
+//     std::vector<std::string>movingCellInfo;
+//     int mov = 0;
+//     int success = 0;
+//     std::pair<std::string,CellInst*>movcellPair;
+//     while( (movcellPair = graph->cellMoving()).second )//
+//     {   
+//         mov++;
+//         CellInst* movCell = movcellPair.second;
+//         bool movingsuccess = true;
         
-        movingCellInfo.push_back(movcellPair.first+" "+std::to_string(movCell->row)+" "+std::to_string(movCell->col));
+//         movingCellInfo.push_back(movcellPair.first+" "+std::to_string(movCell->row)+" "+std::to_string(movCell->col));
         
-        std::map<Net*,int>Nets;//有一些net重複了
+//         std::map<Net*,int>Nets;//有一些net重複了
 
-        int Idx = 0;
-        for(auto net:movCell->nets){
-            if(Nets.find(net)==Nets.end())
-                Nets.insert({net,Idx++});
-        }
-        std::vector<tree*>netTrees(Nets.size(),nullptr);
+//         int Idx = 0;
+//         for(auto net:movCell->nets){
+//             if(Nets.find(net)==Nets.end())
+//                 Nets.insert({net,Idx++});
+//         }
+//         std::vector<tree*>netTrees(Nets.size(),nullptr);
 
-        auto Last = Nets.begin();
-        for(;Last!=Nets.end();++Last){
+//         auto Last = Nets.begin();
+//         for(;Last!=Nets.end();++Last){
             
             
-            auto &net = Last->first;
-            //std::cout<<net->netName<<"\n";
-            int netTreeIdx = Last->second;
-            RipUpNet(graph,net);
-            TwoPinNets twopins;
-            get_two_pins(twopins,*net);
-            auto result = Reroute(graph,net,twopins);
-            netTrees.at(netTreeIdx) = result.first;
-            if(result.second==false)
-            {
-                movingsuccess = false;
-                break;
-            }
-        }
-        if(movingsuccess)//replace old tree
-        {
-            for(auto netInfo:Nets)
-            {
-                auto net = netInfo.first;
-                int NetId = std::stoi(net->netName.substr(1,-1));
-                graph->updateTree(NetId,netTrees.at(netInfo.second));
-            }
-            success++;
-        }
+//             auto &net = Last->first;
+//             //std::cout<<net->netName<<"\n";
+//             int netTreeIdx = Last->second;
+//             RipUpNet(graph,net);
+//             TwoPinNets twopins;
+//             get_two_pins(twopins,*net);
+//             auto result = Reroute(graph,net,twopins);
+//             netTrees.at(netTreeIdx) = result.first;
+//             if(result.second==false)
+//             {
+//                 movingsuccess = false;
+//                 break;
+//             }
+//         }
+//         if(movingsuccess)//replace old tree
+//         {
+//             for(auto netInfo:Nets)
+//             {
+//                 auto net = netInfo.first;
+//                 int NetId = std::stoi(net->netName.substr(1,-1));
+//                 graph->updateTree(NetId,netTrees.at(netInfo.second));
+//             }
+//             success++;
+//         }
 
-        else{
-            movingCellInfo.pop_back();
-            for(auto ptr = Nets.begin();ptr!=Last;ptr++)
-            {
-                auto net = ptr->first;
-                RipUpNet(graph,net,netTrees.at(ptr->second));
-            }
-            Last++;
-            for(auto ptr = Nets.begin();ptr!=Last;ptr++){delete netTrees.at(ptr->second);}//delete 
-            for(auto ptr = Nets.begin();ptr!=Last;ptr++)
-            {
-                auto &net = ptr->first;
-                net->routingState = Net::state::CanAdd;
-                AddingNet(graph,net);//recover demand
-            }
-            movCell->row = movCell->originalRow;
-            movCell->col = movCell->originalCol;
-            graph->insertCellsBlkg(movCell);
-        }
+//         else{
+//             movingCellInfo.pop_back();
+//             for(auto ptr = Nets.begin();ptr!=Last;ptr++)
+//             {
+//                 auto net = ptr->first;
+//                 RipUpNet(graph,net,netTrees.at(ptr->second));
+//             }
+//             Last++;
+//             for(auto ptr = Nets.begin();ptr!=Last;ptr++){delete netTrees.at(ptr->second);}//delete 
+//             for(auto ptr = Nets.begin();ptr!=Last;ptr++)
+//             {
+//                 auto &net = ptr->first;
+//                 net->routingState = Net::state::CanAdd;
+//                 AddingNet(graph,net);//recover demand
+//             }
+//             movCell->row = movCell->originalRow;
+//             movCell->col = movCell->originalCol;
+//             graph->insertCellsBlkg(movCell);
+//         }
 
-        std::cout<<"After routing!\n";
-        show_demand(graph);
-    }
-    std::cout<<"count = "<<mov<<"\n";
-    std::cout<<"sucess = "<<success<<"\n";
-    OutPut(graph,fileName,movingCellInfo);
-}
+//         std::cout<<"After routing!\n";
+//         show_demand(graph);
+//     }
+//     std::cout<<"count = "<<mov<<"\n";
+//     std::cout<<"sucess = "<<success<<"\n";
+//     OutPut(graph,fileName,movingCellInfo);
+// }
 
 
 
