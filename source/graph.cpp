@@ -396,3 +396,15 @@ void Graph::updateTree(int NetId,tree*t)
     routingTree.at(NetId-1) = t;
     routingTree.at(NetId-1)->updateEndPoint(this);
 }
+void Graph::updateNetGrids(int NetId,NetGrids*netgrid)
+{
+    if(NetId<1||NetId>Nets.size())
+    {
+        std::cout<<"void updateNetGrids input Error: 1<=NetId<="<<Nets.size()<<"\n";
+        exit(1);
+    }
+    NetGrids* oldnetgrid = netGrids.at(NetId-1);
+    delete oldnetgrid;
+
+    netGrids.at(NetId-1) = netgrid;
+}

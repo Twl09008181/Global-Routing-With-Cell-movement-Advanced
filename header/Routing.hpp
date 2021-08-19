@@ -60,7 +60,7 @@ struct node{
 struct tree{
     tree()
     {
-        for(int i = 0;i<4;i++)
+        for(int i = 0;i<6;i++)
             EndPoint.push_back(nullptr);
     }
     std::set<node*>leaf;//需要常常做update (有Out就要erase掉)
@@ -79,18 +79,22 @@ struct tree{
             if(n->p.lay==-1)continue;
             auto &grid = (*graph)(n->p.row,n->p.col,n->p.lay);
             //Updating Endpoint
-			if(!EndPoint.at(0)){EndPoint.at(0) = &grid;}
-			if(!EndPoint.at(1)){EndPoint.at(1) = &grid;}
-			if(!EndPoint.at(2)){EndPoint.at(2) = &grid;}
-			if(!EndPoint.at(3)){EndPoint.at(3) = &grid;}
-			int leftmost  = EndPoint.at(0)->col;
-			int rightmost = EndPoint.at(1)->col;
-			int bottom    = EndPoint.at(2)->row;
-			int top       = EndPoint.at(3)->row;
-			if(grid.col < leftmost)  EndPoint.at(0) = &grid;
-			if(grid.col > rightmost) EndPoint.at(1) = &grid;
-			if(grid.row < bottom)    EndPoint.at(2) = &grid;
-			if(grid.row > top)       EndPoint.at(3) = &grid;
+            for(int i = 0;i<6;i++)
+            {
+                if(!EndPoint.at(i)){EndPoint.at(i) = &grid;}
+            }
+			int minCol  = EndPoint.at(0)->col;
+			int maxCol = EndPoint.at(1)->col;
+			int minRow = EndPoint.at(2)->row;
+			int maxRow = EndPoint.at(3)->row;
+            int minLay = EndPoint.at(4)->lay;
+            int maxLay = EndPoint.at(5)->lay;
+			if(grid.col < minCol)  EndPoint.at(0) = &grid;
+			if(grid.col > maxCol ) EndPoint.at(1) = &grid;
+			if(grid.row < minRow)  EndPoint.at(2) = &grid;
+			if(grid.row > maxRow)  EndPoint.at(3) = &grid;
+            if(grid.lay < minLay)  EndPoint.at(4) = &grid;
+			if(grid.lay > maxLay)  EndPoint.at(5) = &grid;
         }
     }
     ~tree()
@@ -112,23 +116,9 @@ struct NetGrids
     {
         grids[grid] = false; //set to false
     }
-    bool Add(Ggrid*grid)
-    {
-        if(!grids.at(grid))
-        {
-            if(grid->get_remaining())
-            {
-                grids.at(grid) = true;
-                grid->add_demand();
-            }
-            else{
-                return false;//canAdd
-            }
-        }
-        return true;//AlreadyAdd
-    }
     std::unordered_map<Ggrid*,bool>grids;
     int NetId;
+    float passScore = 0;
 };
 
 using TwoPinNet = std::pair<node*,node*>;
@@ -153,8 +143,8 @@ void Backtrack_Sgmt_Grid(Graph*graph,NetGrids*net,node*v,bool(*f)(Ggrid* ,NetGri
 
 //Tree interface
 
-void RipUpNet(Graph*graph,NetGrids*net);
-void AddingNet(Graph*graph,NetGrids*net);
+float RipUpNet(Graph*graph,NetGrids*net);
+float AddingNet(Graph*graph,NetGrids*net);
 
 void RipUpAll(Graph*graph);
 void AddingAll(Graph*graph);
@@ -192,11 +182,72 @@ int TwoPinNetsInit(Graph*graph,NetGrids*net,TwoPinNets&pinset);
 
 
 //Routing Interface
-std::pair<tree*,bool> Reroute(Graph*graph,NetGrids*net,TwoPinNets&twopins);
+struct ReroutInfo{
+
+    tree* nettree;
+    NetGrids* netgrids;
+};
+
+std::pair<ReroutInfo,bool> Reroute(Graph*graph,int NetId,TwoPinNets&twopins);
 
 
 
+struct BoundingBox
+{
+    BoundingBox() = default;
+    BoundingBox(Graph*graph,Net*net)
+        :RowBound{graph->RowBound()},ColBound{graph->ColBound()}
+    {
+        LayBound.first = net->minLayer;
+        LayBound.second = graph->LayerNum();
+        minRow = RowBound.first;
+        maxRow = RowBound.second;
+        minCol = ColBound.first;
+        maxCol = ColBound.second;
+        minLay = LayBound.first;
+        maxLay = LayBound.second;
+    }
+    BoundingBox(Graph*graph,Net*net,tree*t1,tree*t2)
+    {
 
+       
+        RowBound = graph->RowBound();
+        ColBound = graph->ColBound();
+        LayBound.first = net->minLayer;
+        LayBound.second = graph->LayerNum();
+        
+        minCol = min(t1->EndPoint.at(0)->col,t2->EndPoint.at(0)->col);
+        minCol = max(minCol-flexCol,ColBound.first);
+
+        maxCol = max(t1->EndPoint.at(1)->col,t2->EndPoint.at(1)->col);
+        maxCol = min(maxCol+flexCol,ColBound.second);
+
+
+
+        minRow = min(t1->EndPoint.at(2)->row,t2->EndPoint.at(2)->row);
+        minRow = max(minRow-flexRow,RowBound.first);
+
+        maxRow = max(t1->EndPoint.at(3)->row,t2->EndPoint.at(3)->row);
+        maxRow = min(maxRow+flexRow,RowBound.second);
+
+        minLay = min(t1->EndPoint.at(4)->lay,t2->EndPoint.at(4)->lay);
+        minLay = max(minLay-flexLay,LayBound.first);
+
+        maxLay = max(t1->EndPoint.at(5)->lay,t2->EndPoint.at(5)->lay);
+        maxLay = min(maxLay+flexLay,LayBound.second);
+    }
+    void loosen()
+    {
+        flexRow+=10;
+        flexCol+=10;
+        flexLay+=10;
+    }
+    std::pair<int,int>RowBound;
+    std::pair<int,int>ColBound;
+    std::pair<int,int>LayBound;
+    int minCol,maxCol,minRow,maxRow,minLay,maxLay;
+    int flexRow = 5,flexCol = 5,flexLay = 5;
+};
 
 
 

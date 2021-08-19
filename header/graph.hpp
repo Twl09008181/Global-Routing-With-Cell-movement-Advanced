@@ -109,7 +109,7 @@ private:
     using Ggrid2D = std::vector<Ggrid1D>;
     using Ggrid3D = std::vector<Ggrid2D>;
     Ggrid3D Ggrids;
-    int MAX_Cell_MOVE;
+    
     int RowBegin,ColBegin;
     int RowEnd,ColEnd;
 
@@ -118,8 +118,10 @@ private:
 
 //---------------------------------------------RoutingTree-------------------------------------------------------------
 public:
+    int MAX_Cell_MOVE;
     std::vector<tree*>routingTree;
     std::vector<NetGrids*>netGrids;
+    float score = 0;
 };
 
 

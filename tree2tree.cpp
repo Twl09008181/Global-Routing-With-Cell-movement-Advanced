@@ -1,15 +1,14 @@
 #include "header/graph.hpp"
 #include "header/Routing.hpp"
 #include "header/TwoPinNet.hpp"
-
+#include <time.h>
 Graph* graph = nullptr;
 
-int show_demand(Graph*graph,bool show = true);
-void Init( std::string path,std::string fileName){graph = new Graph(path+fileName);}
 
-void OnlyRouting(Graph*graph,std::string fileName);
-void OutPut(Graph*graph,std::string fileName,std::vector<std::string>MovingCell);
-void RoutingWithCellMOV(Graph*graph,std::string fileName);
+void Init( std::string path,std::string fileName){graph = new Graph(path+fileName);}
+void OnlyRouting(Graph*graph,std::string fileName,const std::vector<std::string> &cellinfo);
+void OutPut(Graph*graph,std::string fileName,const std::vector<std::string>&MovingCell);
+void RoutingWithCellMOV(Graph*graph,std::string fileName,std::vector<std::string>&MovingCell,bool Ripall=false);
 
 int main(int argc, char** argv)
 {
@@ -24,173 +23,263 @@ int main(int argc, char** argv)
     Init(path,fileName);    
 
     std::cout<<"graph Init done!\n";
-    std::cout<<"Inital routing demand:\n";
-    show_demand(graph);
-
-    auto net1 = graph->getNetGrids(1);
-    RipUpNet(graph,net1);
-    show_demand(graph);
-    AddingNet(graph,net1);
-    show_demand(graph);
-
     
-    // OnlyRouting(graph,fileName);
-    //RoutingWithCellMOV(graph,fileName);
- 
+    
+    std::vector<std::string>MovingCell;
+    
+    RoutingWithCellMOV(graph,fileName,MovingCell,true);//一次拆全部相關的
+    RoutingWithCellMOV(graph,fileName,false);//一次拆一條相關的
+    OnlyRouting(graph,fileName,MovingCell);//單純routing
+    
+    
     delete graph;
 	return 0;
 }
 
 
 
-// void OnlyRouting(Graph*graph,std::string fileName)
-// {
 
-//     int bestDmd = show_demand(graph);
-//     for(int i = graph->Nets.size();i>=1;i--)
-//     {
-//         auto &net = graph->getNet(i);
-//         RipUpNet(graph,&net);
-//         TwoPinNets twopins;
-//         get_two_pins(twopins,net);
-//         auto result = Reroute(graph,&net,twopins);
-//         tree * netTree = result.first;
-//         if(result.second==false)
-//         {
-//            delete netTree;
-//            net.routingState = Net::state::Routing;
-//            UnRegisterTree(graph,&net,graph->getTree(i));
-//            net.routingState = Net::state::CanAdd;
-//            AddingNet(graph,&net);//recover demand
-//         }
-//         else{
-//             graph->updateTree(i,netTree);
-//         }
-//         //std::cout<<"After routing!\n";
-//         int dmd = show_demand(graph,true);
-//         if(dmd<bestDmd)
-//         {
-//             bestDmd = dmd;
-//             //OutPut(graph,fileName);
-//         }
-//     }
-//     OutPut(graph,fileName,{});
-// }
-
-// void RoutingWithCellMOV(Graph*graph,std::string fileName)
-// {
-//     graph->placementInit();
-//     std::vector<std::string>movingCellInfo;
-//     int mov = 0;
-//     int success = 0;
-//     std::pair<std::string,CellInst*>movcellPair;
-//     while( (movcellPair = graph->cellMoving()).second )//
-//     {   
-//         mov++;
-//         CellInst* movCell = movcellPair.second;
-//         bool movingsuccess = true;
-        
-//         movingCellInfo.push_back(movcellPair.first+" "+std::to_string(movCell->row)+" "+std::to_string(movCell->col));
-        
-//         std::map<Net*,int>Nets;//有一些net重複了
-
-//         int Idx = 0;
-//         for(auto net:movCell->nets){
-//             if(Nets.find(net)==Nets.end())
-//                 Nets.insert({net,Idx++});
-//         }
-//         std::vector<tree*>netTrees(Nets.size(),nullptr);
-
-//         auto Last = Nets.begin();
-//         for(;Last!=Nets.end();++Last){
-            
-            
-//             auto &net = Last->first;
-//             //std::cout<<net->netName<<"\n";
-//             int netTreeIdx = Last->second;
-//             RipUpNet(graph,net);
-//             TwoPinNets twopins;
-//             get_two_pins(twopins,*net);
-//             auto result = Reroute(graph,net,twopins);
-//             netTrees.at(netTreeIdx) = result.first;
-//             if(result.second==false)
-//             {
-//                 movingsuccess = false;
-//                 break;
-//             }
-//         }
-//         if(movingsuccess)//replace old tree
-//         {
-//             for(auto netInfo:Nets)
-//             {
-//                 auto net = netInfo.first;
-//                 int NetId = std::stoi(net->netName.substr(1,-1));
-//                 graph->updateTree(NetId,netTrees.at(netInfo.second));
-//             }
-//             success++;
-//         }
-
-//         else{
-//             movingCellInfo.pop_back();
-//             for(auto ptr = Nets.begin();ptr!=Last;ptr++)
-//             {
-//                 auto net = ptr->first;
-//                 RipUpNet(graph,net,netTrees.at(ptr->second));
-//             }
-//             Last++;
-//             for(auto ptr = Nets.begin();ptr!=Last;ptr++){delete netTrees.at(ptr->second);}//delete 
-//             for(auto ptr = Nets.begin();ptr!=Last;ptr++)
-//             {
-//                 auto &net = ptr->first;
-//                 net->routingState = Net::state::CanAdd;
-//                 AddingNet(graph,net);//recover demand
-//             }
-//             movCell->row = movCell->originalRow;
-//             movCell->col = movCell->originalCol;
-//             graph->insertCellsBlkg(movCell);
-//         }
-
-//         std::cout<<"After routing!\n";
-//         show_demand(graph);
-//     }
-//     std::cout<<"count = "<<mov<<"\n";
-//     std::cout<<"sucess = "<<success<<"\n";
-//     OutPut(graph,fileName,movingCellInfo);
-// }
-
-
-
-int show_demand(Graph*graph,bool show)
+//用於一次Rip up多條後 Reject的處理
+//info : 已經Reroute成功的
+//AlreadyRipUP: 已經被RipUp過的netId
+void Reject(Graph*graph,std::vector<ReroutInfo>&info,std::vector<int>&AlreadyRipUp)
 {
-    int LayerNum = graph->LayerNum();
-    std::pair<int,int>Row = graph->RowBound();
-    std::pair<int,int>Col = graph->ColBound();
-
-    int total_demand = 0;
-    for(int lay = 1;lay <= LayerNum;lay++)
+    //Ripup routing result
+    for(auto reroute:info)
     {
-        //#ifdef PARSER_TEST
-        //std::cout<<"Layer : "<< lay <<"\n";
-        //#endif
-        for(int row = Row.second;row >=Row.first ; row--)
-        {
-            for(int col = Col.first; col <= Col.second; col++)
-            {
-                // #ifdef PARSER_TEST
-                //std::cout<<graph(row,col,lay).demand<<" ";
-                //#endif
-                total_demand+=(*graph)(row,col,lay).demand;
-            }
-            //#ifdef PARSER_TEST
-            //std::cout<<"\n";
-            //#endif
-        }
+        RipUpNet(graph,reroute.netgrids);    //RipUP - Reroute result
+        delete reroute.netgrids;
+        delete reroute.nettree;
     }
-    if(show)
-    std::cout<<"Total :"<<total_demand<<"\n";
-    return total_demand;
+    //Recover origin
+    for(auto netId:AlreadyRipUp)
+    {
+        AddingNet(graph,graph->getNetGrids(netId));
+    }
 }
-void OutPut(Graph*graph,std::string fileName,std::vector<std::string>MovingCell)
+
+void Accept(Graph*graph,std::vector<ReroutInfo>&info)
+{
+    for(auto reroute:info)
+    {
+        int netId = reroute.netgrids->NetId;
+        graph->updateNetGrids(netId,reroute.netgrids);
+        graph->updateTree(netId,reroute.nettree);
+    }
+}
+
+void OnlyRouting(Graph*graph,std::string fileName,const std::vector<std::string> &cellinfo)
+{
+
+    int BestSc = graph->score;
+    int success = 0;
+    time_t t1,t2,t3;
+    t1 = time(NULL);
+    t2 = time(NULL);
+    int interval = 60;
+    for(int i = graph->Nets.size();i>=1;i--)
+    {
+        //-------------------------------------------------Routing Init---------------------------------------------------
+        bool movingsuccess = true;
+        std::vector<ReroutInfo>infos;//each time a routing success , insert nettree/netgrids.
+        std::vector<int>RipId;//each time rip-up , need insert netId to RipId.
+        //-------------------------------------------------Routing Init---------------------------------------------------
+
+
+        //-------------------------------------------------RipUP----------------------------------------------------------
+        auto net = graph->getNetGrids(i);
+        RipUpNet(graph,net);RipId.push_back(i);
+        //-------------------------------------------------RipUP----------------------------------------------------------
+
+        //-------------------------------------------------Routing----------------------------------------------------------
+        TwoPinNets twopins;
+        get_two_pins(twopins,graph->getNet(i));
+        std::pair<ReroutInfo,bool> result = Reroute(graph,net->NetId,twopins);
+        
+        if(result.second==false)//failed
+        {
+            movingsuccess = false;
+        }
+        else{//success
+            AddingNet(graph,result.first.netgrids);
+            infos.push_back(result.first);
+        }
+        //-------------------------------------------------Routing----------------------------------------------------------
+
+
+        //-------------------------------------------------Accept or Reject-------------------------------------------------
+        if(movingsuccess)
+        {
+            // if(graph->score < BestSc)//改成SA
+            if(true)
+            {
+                Accept(graph,infos);
+                BestSc = graph->score;
+                
+                success++;
+
+                t3 = time(NULL);
+                if(t3 > t2 + interval)//1 min 
+                {
+                    t2 = time(NULL);
+                    std::cout<<"spend "<<t3-t1<<" seconds\n";
+                    std::cout<<"Best = "<<BestSc<<"\n";
+                    std::cout<<"Net : "<<i<<"\n";
+                    OutPut(graph,fileName,cellinfo);
+                }
+            }
+            else{//Reject
+                Reject(graph,infos,RipId);
+            }
+        }
+        else{//Reject
+            Reject(graph,infos,RipId);
+        }
+        //-------------------------------------------------Accept or Reject-------------------------------------------------  
+    }
+    t3 = time(NULL);
+    std::cout<<"DONE : spend "<<t3-t1<<" seconds\n";
+    std::cout<<"score = "<<graph->score<<"\n";
+    OutPut(graph,fileName,cellinfo);
+}
+
+
+std::map<Net*,int> RelatedNets(CellInst*c)
+{
+    std::map<Net*,int>Nets;//有一些net重複了
+    int Idx = 0;
+    for(auto net:c->nets){
+        if(Nets.find(net)==Nets.end())
+            Nets.insert({net,Idx++});
+    }
+    return Nets;
+}
+
+void RoutingWithCellMOV(Graph*graph,std::string fileName,std::vector<std::string>&movingCellInfo,bool Ripall)
+{
+    graph->placementInit();
+    int mov = 0;
+    int success = 0;
+    std::pair<std::string,CellInst*>movcellPair;
+    float BestSc = graph->score;
+    time_t t1,t2,t3;
+    t1 = time(NULL);
+    t2 = time(NULL);
+    int interval = 60;
+    while( (movcellPair = graph->cellMoving()).second )//
+    {   
+        CellInst* movCell = movcellPair.second;
+        mov++;
+        // if(mov>graph->MAX_Cell_MOVE/20)
+        // {
+        //     movCell->row = movCell->originalRow;
+        //     movCell->col = movCell->originalCol;
+        //     graph->insertCellsBlkg(movCell);
+        //     break;
+        // }
+        
+        movingCellInfo.push_back(movcellPair.first+" "+std::to_string(movCell->row)+" "+std::to_string(movCell->col));
+        
+        if(movingCellInfo.size()>graph->MAX_Cell_MOVE)
+        {
+            movingCellInfo.pop_back();
+            movCell->row = movCell->originalRow;
+            movCell->col = movCell->originalCol;
+            graph->insertCellsBlkg(movCell);
+            break;
+        }
+
+        //-----------------------------------------------RelatedNets------------------------------------------------------
+        std::map<Net*,int>Nets = RelatedNets(movCell);
+
+        //-------------------------------------------------Routing Init---------------------------------------------------
+        bool movingsuccess = true;
+        std::vector<ReroutInfo>infos;infos.reserve(Nets.size());//each time a routing success , insert nettree/netgrids.
+        std::vector<int>RipId;RipId.reserve(Nets.size());//each time rip-up , need insert netId to RipId.
+        //-------------------------------------------------Routing Init---------------------------------------------------
+
+        
+        //---------------------------------------------------RipUP----------------------------------------------------------
+        if(Ripall){
+            for(auto net:Nets)//Ripup all related
+            {
+                int netId = std::stoi(net.first->netName.substr(1,-1));
+                RipUpNet(graph,graph->getNetGrids(netId));RipId.push_back(netId);
+                
+            }
+        }
+
+        for(auto net:Nets)
+        {
+            int netId = std::stoi(net.first->netName.substr(1,-1));
+
+            if(!Ripall){
+                RipUpNet(graph,graph->getNetGrids(netId));RipId.push_back(netId);
+            }
+            //---------------------------------------------------RipUP----------------------------------------------------------
+
+            //-------------------------------------------------Routing----------------------------------------------------------
+            TwoPinNets twopins;
+            get_two_pins(twopins,*net.first);
+            std::pair<ReroutInfo,bool> result = Reroute(graph,netId,twopins);
+
+            if(result.second==false)//failed
+            {
+                movingsuccess = false;
+                break;
+            }
+            else{//success
+                AddingNet(graph,result.first.netgrids);
+                infos.push_back(result.first);
+            }
+            //-------------------------------------------------Routing----------------------------------------------------------
+        }
+            
+
+        //-------------------------------------------------Accept or Reject-------------------------------------------------
+        if(movingsuccess)
+        {
+            if(graph->score < BestSc)  //Accept
+            {
+                Accept(graph,infos);
+                BestSc = graph->score;
+                success++;
+                t3 = time(NULL);
+                if(t3 > t2 + interval)
+                {
+                    t2 = time(NULL);
+                    std::cout<<"spend "<<t3-t1<<" seconds\n";
+                    std::cout<<"Best = "<<BestSc<<"\n";
+                    OutPut(graph,fileName,movingCellInfo);
+                }
+            }
+            else{                     //Reject
+                movingCellInfo.pop_back();
+                Reject(graph,infos,RipId);
+                movCell->row = movCell->originalRow;
+                movCell->col = movCell->originalCol;
+                graph->insertCellsBlkg(movCell);
+            }
+        }
+        else{                        //Reject
+            movingCellInfo.pop_back();
+            Reject(graph,infos,RipId);
+            movCell->row = movCell->originalRow;
+            movCell->col = movCell->originalCol;
+            graph->insertCellsBlkg(movCell);
+        }
+        //-------------------------------------------------Accept or Reject-------------------------------------------------
+    }
+    std::cout<<"count = "<<mov<<"\n";
+    std::cout<<"sucess = "<<success<<"\n";
+    OutPut(graph,fileName,movingCellInfo);
+    std::cout<<"score = "<<graph->score<<"\n";
+    t2 = time(NULL);
+    std::cout<<"spend "<<t2-t1<<" seconds\n";
+   
+}
+
+void OutPut(Graph*graph,std::string fileName,const std::vector<std::string>&MovingCell)
 {
 
     std::vector<std::string>segments;
@@ -216,5 +305,7 @@ void OutPut(Graph*graph,std::string fileName,std::vector<std::string>MovingCell)
         os<<s<<"\n";
     }
     std::cout<<"saving done!\n";
+
+    os.close();
 }
 

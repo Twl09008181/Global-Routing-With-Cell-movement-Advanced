@@ -121,32 +121,50 @@ void Backtack_Sgmt_Grid(Graph*graph,NetGrids*net,node*v,bool(*f)(Ggrid*,NetGrids
     }
 }
 //------------------------------------------------Demand Interface------------------------------------------------------------------------
-
-
-void RipUpNet(Graph*graph,NetGrids*net)
+float RipUpNet(Graph*graph,NetGrids*net)
 {
-    for(auto &grid:net->grids)
+    float sc = 0;
+    for(auto &g:net->grids)
     {
-        if(grid.second==true)
+        Ggrid* grid = g.first;
+        bool alreadyAdd = g.second;
+        if(alreadyAdd)
         {
-            //std::cout<<"delete!\n";
-            grid.first->delete_demand();
-            grid.second = false;
+            grid->delete_demand();
+            g.second = false;
+            float pf = graph->getLay(grid->lay).powerFactor;
+            float weight = graph->getNet(net->NetId).weight;
+            sc+=pf*weight;
         }
-        
     }
+    graph->score-=sc;
+    return sc;
 }
-void AddingNet(Graph*graph,NetGrids*net)
+float AddingNet(Graph*graph,NetGrids*net)
 {
-    for(auto &grid:net->grids)
+    float sc = 0;
+    for(auto &g:net->grids)
     {
-        net->Add(grid.first);
+        Ggrid* grid = g.first;
+        bool alreadyAdd = g.second;
+        if(!alreadyAdd)
+        {
+            if(grid->get_remaining())
+            {
+                grid->add_demand();
+                g.second = true;
+                float pf = graph->getLay(grid->lay).powerFactor;
+                float weight = graph->getNet(net->NetId).weight;
+                sc+=pf*weight;
+            }
+        }
     }
+    graph->score+=sc;
+    return sc;
 }
 
 void RipUpAll(Graph*graph)
 {
-    
     for(int i = 1;i<=graph->Nets.size();i++){
         NetGrids* net = graph->getNetGrids(i); 
         RipUpNet(graph,net);
@@ -201,10 +219,7 @@ void backTrackPrint(Graph*graph,Net*net,node*v,std::vector<std::string>*segment)
     while (v->parent)
     {
         auto &g = (*graph)(v->p.row,v->p.col,v->p.lay);
-        if(g.enrollNet!=net){
-            std::cout<<"!!break\n";
-            break;
-        }
+
         std::string posv = pos2str(v->p);
         std::string posu = pos2str(v->parent->p);
         if(segment){segment->push_back(posu+" "+posv+" "+net->netName);}
@@ -245,12 +260,13 @@ void LabelIntree(Graph*graph,NetGrids*net,node*v,std::unordered_map<node*,bool>&
         auto &grid = (*graph)(v->p.row,v->p.col,v->p.lay);
         if(t1Point.find(v)!=t1Point.end())break;
         t1Point.insert({v,true});
-        // Enroll(grid,net); ////need
         net->PassGrid(&grid);
         v = v->parent;
     }
 }
-node* Search(Graph*graph,NetGrids*net,node *v,const pos&delta,std::unordered_map<std::string,float>&gridCost,tree*tmp)
+
+
+node* Search(Graph*graph,NetGrids*net,node *v,const pos&delta,std::unordered_map<std::string,float>&gridCost,tree*tmp,BoundingBox Bx)
 {
     //Dir checking
     if(delta.row!=0&&v->p.lay%2==1){return nullptr;}//error routing dir
@@ -258,8 +274,8 @@ node* Search(Graph*graph,NetGrids*net,node *v,const pos&delta,std::unordered_map
 
     //Boundary checking
     pos P = {v->p.row+delta.row,v->p.col+delta.col,v->p.lay+delta.lay};
-    if(P.row<graph->RowBound().first||P.row>graph->RowBound().second){return nullptr;} //RowBound checking
-    if(P.col<graph->ColBound().first||P.col>graph->ColBound().second){return nullptr;} //ColBound checking
+    if(P.row<Bx.minRow||P.row>Bx.maxRow){return nullptr;} //RowBound checking
+    if(P.col<Bx.minCol||P.col>Bx.maxCol){return nullptr;} //ColBound checking
 
     int minLayer = graph->getNet(net->NetId).minLayer;
     if(P.lay<minLayer ||P.lay>graph->LayerNum()){return nullptr;}//minLayer checking
@@ -310,140 +326,190 @@ void combine(tree*t1,tree*t2)
     t2->leaf.clear();
     delete t2;
 }
-// tree* Tree2Tree(Graph*graph,Net*net,tree*t1,tree*t2)
-// {
-//     if(t1==t2)return t1;//precheck
 
-//     //std::cout<<"Step1\n";
-//     //Step 1 Setting Target&Source 
-//     TargetTree(graph,net,t2);
-//     SourceTree(graph,net,t1);
+bool AssingPesudo(Graph*graph,Net*net,node*n)
+{
+    float Bestcost = FLT_MAX;
+    int bestLay = net->minLayer;
+    for(int i = net->minLayer;i<=graph->LayerNum();i++)
+    {
+        auto grid = (*graph)(n->p.row,n->p.col,i);
+        int netcost = 0;
+        if(grid.enrollNet==net)
+        {
+            n->p.lay = i;
+            return true;
+        }
+        else 
+            netcost = 1/(1+exp2(grid.get_remaining()));
+        if(netcost<Bestcost)
+        {
+            Bestcost = netcost;
+            n->p.lay = i;
+        }
+    }
+    if(n->p.lay==-1){return false;}
+    if((*graph)(n->p.row,n->p.col,n->p.lay).get_remaining()==0){return false;}
+    (*graph)(n->p.row,n->p.col,n->p.lay).enrollNet = net;
+    return true;
+}
+
+tree* Tree2Tree(Graph*graph,NetGrids*net,tree*t1,tree*t2)
+{
+    if(t1==t2)return t1;//precheck
+    int NetId = net->NetId;
+
+    //std::cout<<"Step1\n";
+    //Step 1 Setting Target&Source 
+    TargetTree(graph,net,t2);
  
+    //std::cout<<"Step2\n";
+    //Step 2 Prepare Q
+    std::priority_queue<node*,std::vector<node*>,minCost>Q;
+    std::unordered_map<std::string,float>gridCost;
+    std::unordered_map<node*,bool>t1Point;//用來判斷isIntree
+    std::unordered_map<std::string,node*>t2Pesudo;//用來update two-pin-net sets...
 
-//     //std::cout<<"Step2\n";
-//     //Step 2 Prepare Q
-//     std::priority_queue<node*,std::vector<node*>,minCost>Q;
-//     std::unordered_map<std::string,float>gridCost;
-//     std::unordered_map<node*,bool>t1Point;//用來判斷isIntree
-//     std::unordered_map<std::string,node*>t2Pesudo;//用來update two-pin-net sets...
+    //Multi Source
+    bool t2IsPesudo = false;
+    for(auto n:t2->all){
+        if(n->p.lay==-1){ 
+            t2IsPesudo = true;
+            std::string twoDpos = std::to_string(n->p.row)+" "+std::to_string(n->p.col);
+            t2Pesudo[twoDpos] = n;
+        }  
+    }
 
-//     //Multi Source
-//     for(auto n:t1->all){//全部丟入Q 
-//         n->cost = 0;
-//         Q.push(n);
-//         gridCost[pos2str(n->p)] = 0;
-//         t1Point[n] = true;
-//     }
-//     bool t2IsPesudo = false;
-//     for(auto n:t2->all){
-//         if(n->p.lay==-1){ 
-//             t2IsPesudo = true;
-//             std::string twoDpos = std::to_string(n->p.row)+" "+std::to_string(n->p.col);
-//             t2Pesudo[twoDpos] = n;
-//         }  
-//     }
+    bool sourceInit = true;
+    for(auto n:t1->all){//全部丟入Q 
+        if(n->p.lay==-1)
+        {
+            sourceInit = AssingPesudo(graph,&graph->getNet(NetId),n);
+            if(!sourceInit)break;
+        }
+        n->cost = 0;
+        Q.push(n);
+        gridCost[pos2str(n->p)] = 0;
+        t1Point[n] = true;
+    }
+
+    BoundingBox Bx;
+    if(sourceInit){
+        t1->updateEndPoint(graph);
+        t2->updateEndPoint(graph);    
+        if(t2IsPesudo)
+        {
+            Bx = BoundingBox (graph,&graph->getNet(net->NetId));
+        }
+        else{
+            Bx = BoundingBox (graph,&graph->getNet(net->NetId),t1,t2);
+        }
+    }
+
+    //std::cout<<"Step3\n";
+    //Step 3 Search
+    node *targetPoint = nullptr;
+    tree* tmp = new tree;
+    while(!Q.empty()&&!targetPoint&&sourceInit)
+    {
+        node * v = Q.top();Q.pop();
+        if((*graph)(v->p.row,v->p.col,v->p.lay).isTarget)//find
+        {
+            std::string twoDpos = std::to_string(v->p.row)+" "+std::to_string(v->p.col);
+            targetPoint = v;
+            if(t2Pesudo.find(twoDpos)!=t2Pesudo.end()){t2Pesudo[twoDpos]->p = v->p;}//updating pesudo-pin
+            break;
+        }
+        node * u = nullptr;
+        if(u = Search(graph,net,v,{0,0,1},gridCost,tmp,Bx))Q.push(u); //up
+        if(u = Search(graph,net,v,{0,0,-1},gridCost,tmp,Bx))Q.push(u);//down
+        if(u = Search(graph,net,v,{0,1,0},gridCost,tmp,Bx))Q.push(u);//-col
+        if(u = Search(graph,net,v,{0,-1,0},gridCost,tmp,Bx))Q.push(u);//+col
+        if(u = Search(graph,net,v,{1,0,0},gridCost,tmp,Bx))Q.push(u);//+row
+        if(u = Search(graph,net,v,{-1,0,0},gridCost,tmp,Bx))Q.push(u);//-row
+    }
+
+    //Untarget
+    UntargetTree(graph,net,t2);
+    if(t2IsPesudo)
+    {
+        tree *  pesudoClear = new tree;
+        for(auto pesudoPin:t2Pesudo)
+        {
+            node *pesudoNode = new node(pesudoPin.second->p); 
+            pesudoNode->p.lay = -1;
+            pesudoClear->addNode(pesudoNode);
+        }
+        UntargetTree(graph,net,pesudoClear);
+        delete pesudoClear;
+    }
+
+    //std::cout<<"Step4\n";//Step 4
+    if(targetPoint){
+        LabelIntree(graph,net,targetPoint,t1Point);
+        std::set<node*>recycle;
+        for(auto n:tmp->all)
+        {
+            if(!IsIntree(n,t1Point)){
+                recycle.insert(n);
+                if(n->parent)
+                tmp->leaf.insert(n->parent);
+            }
+        }
+        for(auto n:recycle){
+            tmp->all.remove(n);
+            tmp->leaf.erase(n);
+            for(auto c:n->child)
+            {
+                if(c->parent==n)
+                    c->parent = nullptr;
+            }
+            delete n;
+        }
+        combine(t1,tmp);
+        combine(t1,t2);
+        return t1;
+    }
+    else {
+        delete tmp;
+        return nullptr;
+    }
+}
 
 
-//     //std::cout<<"Step3\n";
-//     //Step 3 Search
-//     node *targetPoint = nullptr;
-//     tree* tmp = new tree;
-//     while(!Q.empty()&&!targetPoint)
-//     {
-//         node * v = Q.top();Q.pop();
-//         if((*graph)(v->p.row,v->p.col,v->p.lay).isTarget)//find
-//         {
-//             std::string twoDpos = std::to_string(v->p.row)+" "+std::to_string(v->p.col);
-//             targetPoint = v;
-//             if(t2Pesudo.find(twoDpos)!=t2Pesudo.end()){t2Pesudo[twoDpos]->p = v->p;}//updating pesudo-pin
-//             break;
-//         }
-//         node * u = nullptr;
-//         if(u = Search(graph,net,v,{0,0,1},gridCost,tmp))Q.push(u); //up
-//         if(u = Search(graph,net,v,{0,0,-1},gridCost,tmp))Q.push(u);//down
-//         if(u = Search(graph,net,v,{0,1,0},gridCost,tmp))Q.push(u);//-col
-//         if(u = Search(graph,net,v,{0,-1,0},gridCost,tmp))Q.push(u);//+col
-//         if(u = Search(graph,net,v,{1,0,0},gridCost,tmp))Q.push(u);//+row
-//         if(u = Search(graph,net,v,{-1,0,0},gridCost,tmp))Q.push(u);//-row
-//     }
 
-//     //Untarget
-//     UntargetTree(graph,net,t2);
-//     if(t2IsPesudo)
-//     {
-//         tree *  pesudoClear = new tree;
-//         for(auto pesudoPin:t2Pesudo)
-//         {
-//             node *pesudoNode = new node(pesudoPin.second->p); 
-//             pesudoNode->p.lay = -1;
-//             pesudoClear->addNode(pesudoNode);
-//         }
-//         UntargetTree(graph,net,pesudoClear);
-//         delete pesudoClear;
-//     }
 
-//     //std::cout<<"Step4\n";//Step 4
-//     if(targetPoint){
-//         LabelIntree(graph,net,targetPoint,t1Point);
-//         std::set<node*>recycle;
-//         for(auto n:tmp->all)
-//         {
-//             if(!IsIntree(graph,net,n,t1Point)){
-//                 recycle.insert(n);
-//                 if(n->parent)
-//                 tmp->leaf.insert(n->parent);
-//             }
-//         }
-//         for(auto n:recycle){
-//             tmp->all.remove(n);
-//             tmp->leaf.erase(n);
-//             for(auto c:n->child)
-//             {
-//                 if(c->parent==n)
-//                     c->parent = nullptr;
-//             }
-//             delete n;
-//         }
-//         combine(t1,tmp);
-//         combine(t1,t2);
-//         return t1;
-//     }
-//     else {
-//         delete tmp;
-//         return nullptr;
-//     }
-// }
-// std::pair<tree*,bool> Reroute(Graph*graph,Net*net,TwoPinNets&twopins)
-// {
-//     //std::cout<<"init"<<"\n";
-//     int initdemand = TwoPinNetsInit(graph,net,twopins);//Init
-//     //std::cout<<"ImitDmd =  "<<initdemand<<"\n";
 
-//     tree*T= nullptr;
-//     //std::cout<<"TwopinNet!\n";
-//     for(auto pins:twopins)
-//     {   
-//         if(initdemand!=-1)
-//             T = Tree2Tree(graph,net,pins.first->routing_tree,pins.second->routing_tree);
-//         if(!T) //把整個two-pin nets 繞線產生出來的tree全部collect成一棵回傳
-//         {
-//             std::set<tree*>collect;//set(避免duplicate delete)
-//             for(auto pins:twopins)
-//             {
-//                 collect.insert(pins.first->routing_tree);
-//                 collect.insert(pins.second->routing_tree);
-//             }
-//             tree* CollectTree = new tree;
-//             for(tree* t:collect)
-//             {
-//                 for(node * pin : t->leaf){CollectTree->leaf.insert(pin);}//for rip-up
-//                 for(node * pin : t->all){CollectTree->all.push_front(pin);}//for delete
-//             }
-//             UnRegisterTree(graph,net,T);//need
-//             return {CollectTree,false};
-//         }
-//     }
-//     UnRegisterTree(graph,net,T);////need
-//     AddingNet(graph,net,T);//need
-//     return {T,true};
-// }
+std::pair<ReroutInfo,bool> Reroute(Graph*graph,int NetId,TwoPinNets&twopins)
+{
+    //std::cout<<"init"<<"\n";
+    NetGrids * netgrids = new NetGrids(NetId);
+    int initdemand = TwoPinNetsInit(graph,netgrids,twopins);//Init
+    //std::cout<<"ImitDmd =  "<<initdemand<<"\n";
+
+    tree*T= nullptr;
+    //std::cout<<"TwopinNet!\n";
+    for(auto pins:twopins)
+    {   
+        if(initdemand!=-1)
+            T = Tree2Tree(graph,netgrids,pins.first->routing_tree,pins.second->routing_tree);
+        if(!T) //把整個two-pin nets 繞線產生出來的tree全部collect成一棵回傳
+        {
+            std::set<tree*>collect;//set(避免duplicate delete)
+            for(auto pins:twopins)
+            {
+                collect.insert(pins.first->routing_tree);
+                collect.insert(pins.second->routing_tree);
+            }
+            tree* CollectTree = new tree;
+            for(tree* t:collect)
+            {
+                for(node * pin : t->leaf){CollectTree->leaf.insert(pin);}//for rip-up
+                for(node * pin : t->all){CollectTree->all.push_front(pin);}//for delete
+            }
+        
+            return {ReroutInfo{CollectTree,netgrids},false};
+        }
+    }
+    return {ReroutInfo{T,netgrids},true};
+}
