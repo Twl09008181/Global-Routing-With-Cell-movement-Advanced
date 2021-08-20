@@ -88,14 +88,11 @@ struct Ggrid{
         demand = max(demand-dmd,0);
     }
 //----------------------------------Data Member----------------------------------------------
-    int capacity;
-    int demand;
     int row,col,lay;
-
-//---------------------------------RoutingFlag-------------------------------------------
-    Net* enrollNet = nullptr;//for demand interface
-    bool isTarget = false;//for tree2tree
-    //bool isSource = false;//到時候拿來辨認看能不能加快速度
+    int capacity;
+private:  
+    int demand;
+    
 };
 
 struct Net{

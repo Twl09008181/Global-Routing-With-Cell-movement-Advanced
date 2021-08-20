@@ -156,7 +156,7 @@ void Graph::parser(std::string fileName){
         for (auto blkg:c->mCell->blkgs)//blkg is string : value type
         {
             MasterCell::Blkg b = blkg.second;
-            (*this)(row,col,b.first).demand += b.second;
+            (*this)(row,col,b.first).add_demand(b.second);
             totalBlkg+=b.second;
         }
     }

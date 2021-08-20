@@ -53,7 +53,6 @@ struct node{
     tree * routing_tree;
     node* parent;
     std::set<node*>child;
-    bool mark = false;//保留中 
     float cost = FLT_MAX;
     bool IsIntree = false;//backtrack need
 };
@@ -130,18 +129,17 @@ using TwoPinNets = std::list<TwoPinNet>;
 
 //Ggrid callback function
 bool passing(Ggrid*grid,NetGrids*net);//only for segment form (initial routing)
-bool target(Ggrid* g,NetGrids*net);
-bool Untarget(Ggrid* g,NetGrids*net);
-
-
 //Ggrid Segment fun
 void Sgmt_Grid(Graph*graph,NetGrids*net,node*v,node*u,bool(*f)(Ggrid* ,NetGrids*));
 void Backtrack_Sgmt_Grid(Graph*graph,NetGrids*net,node*v,bool(*f)(Ggrid* ,NetGrids*));
+void TreeInterface(Graph*graph,NetGrids*net,bool(*f)(Ggrid* ,NetGrids*),tree* nettree=nullptr);
+inline void AddSegment(Graph*graph,NetGrids*net,tree*nettree=nullptr){
+    TreeInterface(graph,net,passing,nettree);
+}
 
 
 
-
-//Tree interface
+//Demand
 
 float RipUpNet(Graph*graph,NetGrids*net);
 float AddingNet(Graph*graph,NetGrids*net);
@@ -150,27 +148,6 @@ void RipUpAll(Graph*graph);
 void AddingAll(Graph*graph);
 
 
-
-void TreeInterface(Graph*graph,NetGrids*net,bool(*f)(Ggrid* ,NetGrids*),tree* nettree=nullptr);
-
-
-// //RipUP and Adding
-// inline void RipUpNet(Graph*graph,NetGrids*net,tree*nettree=nullptr){
-//     TreeInterface(graph,net,removedemand,nettree);
-// }
-
-inline void AddSegment(Graph*graph,NetGrids*net,tree*nettree=nullptr){
-    TreeInterface(graph,net,passing,nettree);
-}
-
-inline void TargetTree(Graph*graph,NetGrids*net,tree*nettree){
-    TreeInterface(graph,net,target,nettree);
-}
-inline void UntargetTree(Graph*graph,NetGrids*net,tree*nettree){
-    TreeInterface(graph,net,Untarget,nettree);
-}
-
-// void backTrackPrint(node*v,Net*net,std::vector<std::string>*segment)
 //output interface
 void backTrackPrint(Graph*graph,Net*net,node*v,std::vector<std::string>*segment=nullptr);
 void printTree(Graph*graph,Net*net,tree*t,std::vector<std::string>*segment=nullptr);
@@ -180,10 +157,8 @@ int TwoPinNetsInit(Graph*graph,NetGrids*net,TwoPinNets&pinset);
 
 
 
-
 //Routing Interface
 struct ReroutInfo{
-
     tree* nettree;
     NetGrids* netgrids;
 };

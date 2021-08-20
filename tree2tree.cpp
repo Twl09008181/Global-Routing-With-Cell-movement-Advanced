@@ -27,8 +27,8 @@ int main(int argc, char** argv)
     
     std::vector<std::string>MovingCell;
     
-    RoutingWithCellMOV(graph,fileName,MovingCell,true);//一次拆全部相關的
-    RoutingWithCellMOV(graph,fileName,false);//一次拆一條相關的
+    // RoutingWithCellMOV(graph,fileName,MovingCell,true);//一次拆全部相關的
+    // RoutingWithCellMOV(graph,fileName,false);//一次拆一條相關的
     OnlyRouting(graph,fileName,MovingCell);//單純routing
     
     

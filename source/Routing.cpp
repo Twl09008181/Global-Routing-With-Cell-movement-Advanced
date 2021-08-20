@@ -22,8 +22,6 @@ void node::connect(node *host)
 
 
 
-//-------------------------------------------------callback functions------------------------------------------------------------
-
 
 bool passing(Ggrid*grid,NetGrids*net)
 {
@@ -38,16 +36,6 @@ bool passing(Ggrid*grid,NetGrids*net)
     return false;
 }
 
-bool target(Ggrid*g,NetGrids*net){
-    g->isTarget = true;    
-    return true;
-}
-bool Untarget(Ggrid*g,NetGrids*net)
-{
-    g->isTarget = false;
-    return true;
-}
-//-------------------------------------------------callback functions------------------------------------------------------------
 
 
 
@@ -151,7 +139,7 @@ float AddingNet(Graph*graph,NetGrids*net)
         {
             if(grid->get_remaining())
             {
-                grid->add_demand();
+                grid->add_demand();//need
                 g.second = true;
                 float pf = graph->getLay(grid->lay).powerFactor;
                 float weight = graph->getNet(net->NetId).weight;
@@ -196,18 +184,6 @@ void TreeInterface(Graph*graph,NetGrids*net,bool(*callback)(Ggrid* ,NetGrids*),t
             callback(&(*graph)(leaf->p.row,leaf->p.col,leaf->p.lay),net);
         else if(leaf->p.lay!=-1)
             Backtack_Sgmt_Grid(graph,net,leaf,callback);
-        else if(leaf->p.lay==-1&&callback==target)//important
-        {
-            int minLay = graph->getNet(net->NetId).minLayer;
-            for(int i = minLay;i<=graph->LayerNum();i++)//label all layer be target
-                (*graph)(leaf->p.row,leaf->p.col,i).isTarget = true;  
-        }
-        else if(leaf->p.lay==-1&&callback==Untarget)
-        {
-            int minLay = graph->getNet(net->NetId).minLayer;
-            for(int i = minLay;i<=graph->LayerNum();i++)//label all layer be target
-                (*graph)(leaf->p.row,leaf->p.col,i).isTarget = false;  
-        }
     }
 }
 
@@ -282,7 +258,7 @@ node* Search(Graph*graph,NetGrids*net,node *v,const pos&delta,std::unordered_map
     
     //Capacity checking
     Ggrid& g = (*graph)(P.row,P.col,P.lay);
-    bool enough = (net->AlreadyPass(&g))? true : g.get_remaining(); ////need
+    bool enough = (net->AlreadyPass(&g))? true : g.get_remaining(); ////need change  first come,first serve
     if(!enough)return nullptr;
 
 
@@ -327,15 +303,16 @@ void combine(tree*t1,tree*t2)
     delete t2;
 }
 
-bool AssingPesudo(Graph*graph,Net*net,node*n)
+bool AssingPesudo(Graph*graph,NetGrids*net,node*n)
 {
     float Bestcost = FLT_MAX;
-    int bestLay = net->minLayer;
-    for(int i = net->minLayer;i<=graph->LayerNum();i++)
+    int minLay = graph->getNet(net->NetId).minLayer;
+    int bestLay = minLay;
+    for(int i = minLay;i<=graph->LayerNum();i++)
     {
-        auto grid = (*graph)(n->p.row,n->p.col,i);
+        auto &grid = (*graph)(n->p.row,n->p.col,i);
         int netcost = 0;
-        if(grid.enrollNet==net)
+        if(net->AlreadyPass(&grid))
         {
             n->p.lay = i;
             return true;
@@ -350,41 +327,42 @@ bool AssingPesudo(Graph*graph,Net*net,node*n)
     }
     if(n->p.lay==-1){return false;}
     if((*graph)(n->p.row,n->p.col,n->p.lay).get_remaining()==0){return false;}
-    (*graph)(n->p.row,n->p.col,n->p.lay).enrollNet = net;
+    net->PassGrid(&(*graph)(n->p.row,n->p.col,n->p.lay));
     return true;
 }
 
-tree* Tree2Tree(Graph*graph,NetGrids*net,tree*t1,tree*t2)
-{
-    if(t1==t2)return t1;//precheck
-    int NetId = net->NetId;
 
-    //std::cout<<"Step1\n";
-    //Step 1 Setting Target&Source 
-    TargetTree(graph,net,t2);
- 
-    //std::cout<<"Step2\n";
-    //Step 2 Prepare Q
-    std::priority_queue<node*,std::vector<node*>,minCost>Q;
-    std::unordered_map<std::string,float>gridCost;
-    std::unordered_map<node*,bool>t1Point;//用來判斷isIntree
-    std::unordered_map<std::string,node*>t2Pesudo;//用來update two-pin-net sets...
-
-    //Multi Source
-    bool t2IsPesudo = false;
-    for(auto n:t2->all){
+bool TargetTree(Graph*graph,NetGrids*net,tree*t,std::unordered_map<std::string,node*>&target)
+{   
+    bool isPseudo = false;
+    for(auto n:t->all)
+    {
         if(n->p.lay==-1){ 
-            t2IsPesudo = true;
             std::string twoDpos = std::to_string(n->p.row)+" "+std::to_string(n->p.col);
-            t2Pesudo[twoDpos] = n;
-        }  
+            target[twoDpos] = n;
+            isPseudo  = true;
+            for(int i = graph->getNet(net->NetId).minLayer;i<=graph->LayerNum();i++)
+            {
+                std::string pos3d = twoDpos+" "+std::to_string(i);
+                target.insert({pos3d,nullptr});//nullptr represents pesudo
+            }
+        }
+        else{
+            target[pos2str(n->p)] = n;
+        } 
     }
+    return isPseudo;
+}
 
+
+bool SourceTree(Graph*graph,NetGrids*net, tree*t1,\
+std::priority_queue<node*,std::vector<node*>,minCost>&Q,std::unordered_map<std::string,float>&gridCost,std::unordered_map<node*,bool>&t1Point)
+{
     bool sourceInit = true;
-    for(auto n:t1->all){//全部丟入Q 
+    for(auto n:t1->all){
         if(n->p.lay==-1)
         {
-            sourceInit = AssingPesudo(graph,&graph->getNet(NetId),n);
+            sourceInit = AssingPesudo(graph,net,n);
             if(!sourceInit)break;
         }
         n->cost = 0;
@@ -392,12 +370,48 @@ tree* Tree2Tree(Graph*graph,NetGrids*net,tree*t1,tree*t2)
         gridCost[pos2str(n->p)] = 0;
         t1Point[n] = true;
     }
+    return sourceInit;
+}
+
+bool isTarget(node *v,std::unordered_map<std::string,node*>&target)
+{
+    std::string str = pos2str(v->p);
+    if(target.find(str)!=target.end())//find
+    {
+        node* n = target.at(str);
+        if(!n)//it is pesudo 
+        {
+            std::string twoDpos = std::to_string(v->p.row)+" "+std::to_string(v->p.col);
+            target.at(twoDpos)->p = v->p; //updating
+        }
+        return true;
+    }
+    return false;
+}
+
+tree* Tree2Tree(Graph*graph,NetGrids*net,tree*t1,tree*t2)
+{
+    if(t1==t2)return t1;//precheck
+    int NetId = net->NetId;
+
+
+    //---------------------------------------------------------------Source(tree1) Init------------------------------------------------------
+    std::priority_queue<node*,std::vector<node*>,minCost>Q;
+    std::unordered_map<std::string,float>gridCost;
+    std::unordered_map<node*,bool>t1Point;//用來判斷isIntree
+    bool sourceInit = SourceTree(graph,net,t1,Q,gridCost,t1Point);//Multi Source
+
+
+    //---------------------------------------------------------------Target(tree2) Init------------------------------------------------------
+    std::unordered_map<std::string,node*>target;
+    bool t2isPesudo = TargetTree(graph,net,t2,target);//Multi Target
+    
 
     BoundingBox Bx;
     if(sourceInit){
         t1->updateEndPoint(graph);
         t2->updateEndPoint(graph);    
-        if(t2IsPesudo)
+        if(t2isPesudo)//t2 is pesudo
         {
             Bx = BoundingBox (graph,&graph->getNet(net->NetId));
         }
@@ -405,19 +419,16 @@ tree* Tree2Tree(Graph*graph,NetGrids*net,tree*t1,tree*t2)
             Bx = BoundingBox (graph,&graph->getNet(net->NetId),t1,t2);
         }
     }
-
-    //std::cout<<"Step3\n";
-    //Step 3 Search
+    
     node *targetPoint = nullptr;
     tree* tmp = new tree;
     while(!Q.empty()&&!targetPoint&&sourceInit)
     {
         node * v = Q.top();Q.pop();
-        if((*graph)(v->p.row,v->p.col,v->p.lay).isTarget)//find
+       
+        if(isTarget(v,target))//find
         {
-            std::string twoDpos = std::to_string(v->p.row)+" "+std::to_string(v->p.col);
             targetPoint = v;
-            if(t2Pesudo.find(twoDpos)!=t2Pesudo.end()){t2Pesudo[twoDpos]->p = v->p;}//updating pesudo-pin
             break;
         }
         node * u = nullptr;
@@ -428,22 +439,7 @@ tree* Tree2Tree(Graph*graph,NetGrids*net,tree*t1,tree*t2)
         if(u = Search(graph,net,v,{1,0,0},gridCost,tmp,Bx))Q.push(u);//+row
         if(u = Search(graph,net,v,{-1,0,0},gridCost,tmp,Bx))Q.push(u);//-row
     }
-
-    //Untarget
-    UntargetTree(graph,net,t2);
-    if(t2IsPesudo)
-    {
-        tree *  pesudoClear = new tree;
-        for(auto pesudoPin:t2Pesudo)
-        {
-            node *pesudoNode = new node(pesudoPin.second->p); 
-            pesudoNode->p.lay = -1;
-            pesudoClear->addNode(pesudoNode);
-        }
-        UntargetTree(graph,net,pesudoClear);
-        delete pesudoClear;
-    }
-
+   
     //std::cout<<"Step4\n";//Step 4
     if(targetPoint){
         LabelIntree(graph,net,targetPoint,t1Point);
