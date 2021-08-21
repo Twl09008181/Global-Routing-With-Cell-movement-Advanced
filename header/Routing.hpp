@@ -55,6 +55,7 @@ struct node{
     std::set<node*>child;
     float cost = FLT_MAX;
     bool IsIntree = false;//backtrack need
+
 };
 struct tree{
     tree()

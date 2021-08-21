@@ -2,6 +2,7 @@
 #include "header/Routing.hpp"
 #include "header/TwoPinNet.hpp"
 #include <time.h>
+#include <thread>
 Graph* graph = nullptr;
 
 
@@ -31,6 +32,7 @@ int main(int argc, char** argv)
     // RoutingWithCellMOV(graph,fileName,false);//一次拆一條相關的
     OnlyRouting(graph,fileName,MovingCell);//單純routing
     
+
     
     delete graph;
 	return 0;

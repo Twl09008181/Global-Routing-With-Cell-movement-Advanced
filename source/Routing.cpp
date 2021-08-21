@@ -227,14 +227,18 @@ void PrintAll(Graph*graph,std::vector<std::string>*segment)
 
 bool IsIntree(node*v,std::unordered_map<node*,bool>&t1Point)
 {  
-    return t1Point.find(v)!=t1Point.end();
+    return t1Point.find(v)!=t1Point.end()&&t1Point.at(v);
 }
+
 void LabelIntree(Graph*graph,NetGrids*net,node*v,std::unordered_map<node*,bool>&t1Point)
 {
     while(v)
     {
         auto &grid = (*graph)(v->p.row,v->p.col,v->p.lay);
-        if(t1Point.find(v)!=t1Point.end())break;
+        if(t1Point.find(v)!=t1Point.end()){
+            t1Point.at(v) = true;  //--IMPORTANT
+            break;
+        }
         t1Point.insert({v,true});
         net->PassGrid(&grid);
         v = v->parent;
@@ -355,20 +359,21 @@ bool TargetTree(Graph*graph,NetGrids*net,tree*t,std::unordered_map<std::string,n
 }
 
 
-bool SourceTree(Graph*graph,NetGrids*net, tree*t1,\
+bool SourceTree(Graph*graph,NetGrids*net, tree*t1,tree*tmp,\
 std::priority_queue<node*,std::vector<node*>,minCost>&Q,std::unordered_map<std::string,float>&gridCost,std::unordered_map<node*,bool>&t1Point)
 {
     bool sourceInit = true;
     for(auto n:t1->all){
-        if(n->p.lay==-1)
+        node * v = new node(n->p);tmp->addNode(v);
+        if(v->p.lay==-1)
         {
-            sourceInit = AssingPesudo(graph,net,n);
+            sourceInit = AssingPesudo(graph,net,v);
             if(!sourceInit)break;
         }
-        n->cost = 0;
-        Q.push(n);
-        gridCost[pos2str(n->p)] = 0;
-        t1Point[n] = true;
+        v->cost = 0;
+        Q.push(v);
+        gridCost[pos2str(v->p)] = 0;
+        t1Point[v] = false;//-----------------------important!! let it be false
     }
     return sourceInit;
 }
@@ -392,14 +397,13 @@ bool isTarget(node *v,std::unordered_map<std::string,node*>&target)
 tree* Tree2Tree(Graph*graph,NetGrids*net,tree*t1,tree*t2)
 {
     if(t1==t2)return t1;//precheck
-    int NetId = net->NetId;
-
 
     //---------------------------------------------------------------Source(tree1) Init------------------------------------------------------
     std::priority_queue<node*,std::vector<node*>,minCost>Q;
     std::unordered_map<std::string,float>gridCost;
     std::unordered_map<node*,bool>t1Point;//用來判斷isIntree
-    bool sourceInit = SourceTree(graph,net,t1,Q,gridCost,t1Point);//Multi Source
+    tree* tmp = new tree;//all saving in tmp (for threading....)
+    bool sourceInit = SourceTree(graph,net,t1,tmp,Q,gridCost,t1Point);//Multi Source
 
 
     //---------------------------------------------------------------Target(tree2) Init------------------------------------------------------
@@ -421,7 +425,7 @@ tree* Tree2Tree(Graph*graph,NetGrids*net,tree*t1,tree*t2)
     }
     
     node *targetPoint = nullptr;
-    tree* tmp = new tree;
+    
     while(!Q.empty()&&!targetPoint&&sourceInit)
     {
         node * v = Q.top();Q.pop();
