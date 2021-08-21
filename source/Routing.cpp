@@ -245,25 +245,39 @@ void LabelIntree(Graph*graph,NetGrids*net,node*v,std::unordered_map<node*,bool>&
     }
 }
 
-
-node* Search(Graph*graph,NetGrids*net,node *v,const pos&delta,std::unordered_map<std::string,float>&gridCost,tree*tmp,BoundingBox Bx)
+bool BoundaryCheck(Graph*graph,NetGrids*net,node *v,const pos&delta,BoundingBox &Bx)
 {
-    //Dir checking
-    if(delta.row!=0&&v->p.lay%2==1){return nullptr;}//error routing dir
-    if(delta.col!=0&&v->p.lay%2==0){return nullptr;}//error routing dir
+    if(delta.row!=0&&v->p.lay%2==1){return false;}//error routing dir
+    if(delta.col!=0&&v->p.lay%2==0){return false;}//error routing dir
 
     //Boundary checking
     pos P = {v->p.row+delta.row,v->p.col+delta.col,v->p.lay+delta.lay};
-    if(P.row<Bx.minRow||P.row>Bx.maxRow){return nullptr;} //RowBound checking
-    if(P.col<Bx.minCol||P.col>Bx.maxCol){return nullptr;} //ColBound checking
+    if(P.row<Bx.minRow||P.row>Bx.maxRow){return false;} //RowBound checking
+    if(P.col<Bx.minCol||P.col>Bx.maxCol){return false;} //ColBound checking
 
     int minLayer = graph->getNet(net->NetId).minLayer;
-    if(P.lay<minLayer ||P.lay>graph->LayerNum()){return nullptr;}//minLayer checking
-    
-    //Capacity checking
-    Ggrid& g = (*graph)(P.row,P.col,P.lay);
+    if(P.lay<minLayer ||P.lay>graph->LayerNum()){return false;}//minLayer checking
+
+    return true;
+}
+
+bool CapacityCheck(NetGrids*net,Ggrid&g)
+{
     bool enough = (net->AlreadyPass(&g))? true : g.get_remaining(); ////need change  first come,first serve
-    if(!enough)return nullptr;
+    if(!enough)return false;
+    return true;
+}
+
+
+node* Search(Graph*graph,NetGrids*net,node *v,const pos&delta,std::unordered_map<std::string,float>&gridCost,tree*tmp,BoundingBox &Bx)
+{
+    ///Dir&Boundary checking
+    if(!BoundaryCheck(graph,net,v,delta,Bx))return nullptr;
+    
+    pos P = {v->p.row+delta.row,v->p.col+delta.col,v->p.lay+delta.lay};
+    Ggrid& g = (*graph)(P.row,P.col,P.lay);
+    //Capacity checking
+    if(!CapacityCheck(net,g))return nullptr;
 
 
     //Caculate Cost    
@@ -355,6 +369,27 @@ bool TargetTree(Graph*graph,NetGrids*net,tree*t,std::unordered_map<std::string,n
             target[pos2str(n->p)] = n;
         } 
     }
+    return isPseudo;
+}
+
+
+//for single node
+bool TargetNode(Graph*graph,NetGrids*net,node*n,std::unordered_map<std::string,node*>&target)
+{
+    bool isPseudo = false;
+    if(n->p.lay==-1){ 
+            std::string twoDpos = std::to_string(n->p.row)+" "+std::to_string(n->p.col);
+            target[twoDpos] = n;
+            isPseudo  = true;
+            for(int i = graph->getNet(net->NetId).minLayer;i<=graph->LayerNum();i++)
+            {
+                std::string pos3d = twoDpos+" "+std::to_string(i);
+                target.insert({pos3d,nullptr});//nullptr represents pesudo
+            }
+        }
+    else{
+        target[pos2str(n->p)] = n;
+    } 
     return isPseudo;
 }
 
@@ -478,6 +513,107 @@ tree* Tree2Tree(Graph*graph,NetGrids*net,tree*t1,tree*t2)
 
 
 
+node* search2(Graph*graph,NetGrids*net,node *v,const pos&delta,tree*tmp,std::unordered_map<std::string,bool>&mark,BoundingBox &Bx)
+{
+    if(!BoundaryCheck(graph,net,v,delta,Bx))return nullptr;
+    // std::cout<<"step6\n";
+    pos P = {v->p.row+delta.row,v->p.col+delta.col,v->p.lay+delta.lay};
+    Ggrid& g = (*graph)(P.row,P.col,P.lay);
+    std::string str = pos2str(P);
+    if(mark.find(str)!=mark.end())return nullptr; //mark
+    mark[str] = true;
+
+    // std::cout<<"step7\n";
+    
+    //Capacity checking
+    if(!CapacityCheck(net,g))return nullptr;
+    // std::cout<<"step8\n";
+    node * n = new node(P);
+    // std::cout<<"step9\n";
+    tmp->addNode(n);
+    // std::cout<<"step10\n";
+    v->connect(n);
+    // std::cout<<"step11\n";
+    return n;
+}
+
+tree* MazeRouting(Graph*graph,NetGrids*net,node*n1,node*n2)
+{
+    if(n1->routing_tree==n2->routing_tree)return n1->routing_tree;
+
+
+    // std::cout<<"step1\n";
+    if(n1->p.lay==-1&&!AssingPesudo(graph,net,n1))return nullptr;//n1 init failed
+    std::unordered_map<std::string,node*>target;
+    bool t2isPesudo = TargetNode(graph,net,n2,target);
+    
+    // std::cout<<"step2\n";
+
+    BoundingBox Bx(graph,&graph->getNet(net->NetId),n1,n2);
+    
+    // std::cout<<"step3\n";
+
+    node *targetPoint = nullptr;
+    tree* tmp = new tree;node * n1Copy = new node(n1->p);//future:threading....
+    tmp->addNode(n1Copy);
+
+    std::unordered_map<node*,bool>t1Point;t1Point.insert({n1Copy,true});
+    std::queue<node*>Q;Q.push(n1Copy);
+    std::unordered_map<std::string,bool>mark;mark.insert({pos2str(n1Copy->p),true});
+
+    // std::cout<<"step4\n";
+
+    while(!Q.empty()&&!targetPoint)
+    {
+        node * v = Q.front();Q.pop();
+       
+        if(isTarget(v,target))//find
+        {
+            targetPoint = v;
+            break;
+        }
+        node * u = nullptr;
+        if(u = search2(graph,net,v,{0,0,1},tmp,mark,Bx))Q.push(u); //up
+        if(u = search2(graph,net,v,{0,0,-1},tmp,mark,Bx))Q.push(u);//down
+        if(u = search2(graph,net,v,{0,1,0},tmp,mark,Bx))Q.push(u);//-col
+        if(u = search2(graph,net,v,{0,-1,0},tmp,mark,Bx))Q.push(u);//+col
+        if(u = search2(graph,net,v,{1,0,0},tmp,mark,Bx))Q.push(u);//+row
+        if(u = search2(graph,net,v,{-1,0,0},tmp,mark,Bx))Q.push(u);//-row
+    }
+    //std::cout<<"step5\n";
+    if(targetPoint){
+        
+        LabelIntree(graph,net,targetPoint,t1Point);
+        
+        std::set<node*>recycle;
+        for(auto n:tmp->all)
+        {
+            if(!IsIntree(n,t1Point)){
+                recycle.insert(n);
+                if(n->parent)
+                tmp->leaf.insert(n->parent);
+            }
+        }
+        for(auto n:recycle){
+            tmp->all.remove(n);
+            tmp->leaf.erase(n);
+            for(auto c:n->child)
+            {
+                if(c->parent==n)
+                    c->parent = nullptr;
+            }
+            delete n;
+        }
+
+        combine(n1->routing_tree,tmp);
+        combine(n1->routing_tree,n2->routing_tree);
+        return n1->routing_tree;
+    }
+    else {
+        delete tmp;
+        return nullptr;
+    }
+}
 
 
 std::pair<ReroutInfo,bool> Reroute(Graph*graph,int NetId,TwoPinNets&twopins)
@@ -492,7 +628,13 @@ std::pair<ReroutInfo,bool> Reroute(Graph*graph,int NetId,TwoPinNets&twopins)
     for(auto pins:twopins)
     {   
         if(initdemand!=-1)
-            T = Tree2Tree(graph,netgrids,pins.first->routing_tree,pins.second->routing_tree);
+        {
+
+            T = MazeRouting(graph,netgrids,pins.first,pins.second);
+            // if(!T)
+            // T = Tree2Tree(graph,netgrids,pins.first->routing_tree,pins.second->routing_tree);
+        }
+            
         if(!T) //把整個two-pin nets 繞線產生出來的tree全部collect成一棵回傳
         {
             std::set<tree*>collect;//set(避免duplicate delete)

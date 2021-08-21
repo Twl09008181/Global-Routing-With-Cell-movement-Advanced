@@ -90,12 +90,12 @@ public:
     Layer& getLay(int Lay){
         return Layers.at(Lay-1);
     }
-	void showEffectedNetSize();
-	std::pair<std::string,CellInst*>cellMoving();
-	void placementInit();
-    bool removeCellsBlkg(CellInst* cell);
+	// void showEffectedNetSize();
+	// std::pair<std::string,CellInst*>cellMoving();
+	// void placementInit();
+    // bool removeCellsBlkg(CellInst* cell);
 
-    bool insertCellsBlkg(CellInst* cell);
+    // bool insertCellsBlkg(CellInst* cell);
 
 
 //--------------------------------------------Data Mmeber------------------------------------------------------------

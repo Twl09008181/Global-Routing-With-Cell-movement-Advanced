@@ -183,6 +183,41 @@ struct BoundingBox
         minLay = LayBound.first;
         maxLay = LayBound.second;
     }
+    BoundingBox(Graph*graph,Net*net,node*n1,node*n2)
+    {
+        RowBound = graph->RowBound();
+        ColBound = graph->ColBound();
+        LayBound.first = net->minLayer;
+        LayBound.second = graph->LayerNum();
+
+        minCol = min(n1->p.col,n2->p.col);
+        // minCol = max(minCol-flexCol,ColBound.first);
+
+        maxCol = max(n1->p.col,n2->p.col);
+        // maxCol = min(maxCol+flexCol,ColBound.second);
+
+        minRow = min(n1->p.row,n2->p.row);
+        // minRow = max(minRow-flexRow,RowBound.first);
+
+        maxRow = max(n1->p.row,n2->p.row);
+        // maxRow = min(maxRow+flexRow,RowBound.second);
+
+        if(n2->p.lay!=-1)
+            minLay = min(n1->p.lay,n2->p.lay);
+        else
+            minLay = n1->p.lay;
+
+        minLay = max(minLay-flexLay,LayBound.first);
+
+        if(n2->p.lay!=-1)
+            maxLay = max(n1->p.lay,n2->p.lay);
+        else
+            maxLay = n1->p.lay;
+        maxLay = min(maxLay+flexLay,LayBound.second);
+
+
+
+    }
     BoundingBox(Graph*graph,Net*net,tree*t1,tree*t2)
     {
 

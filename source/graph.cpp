@@ -239,150 +239,150 @@ void Graph::parser(std::string fileName){
 }
 
 
-void Graph::showEffectedNetSize(){
-	int counter = 0;
-	std::vector<int> log10Count(10);
-	for(auto& p : CellInsts){
-		auto cellInst = p.second;
-		if(cellInst->vArea == -1) continue;
-		counter++;
+// void Graph::showEffectedNetSize(){
+// 	int counter = 0;
+// 	std::vector<int> log10Count(10);
+// 	for(auto& p : CellInsts){
+// 		auto cellInst = p.second;
+// 		if(cellInst->vArea == -1) continue;
+// 		counter++;
 
-		int leftBound, rightBound, upperBound, lowerBound;
-		leftBound = lowerBound = INT32_MAX;
-		rightBound = upperBound = INT32_MIN;
+// 		int leftBound, rightBound, upperBound, lowerBound;
+// 		leftBound = lowerBound = INT32_MAX;
+// 		rightBound = upperBound = INT32_MIN;
 
-        //這邊要update
-		for(auto net : cellInst->nets){	
-            int netId = std::stoi(net->netName.substr(1,-1));
-            tree* nettree = this->getTree(netId);
+//         //這邊要update
+// 		for(auto net : cellInst->nets){	
+//             int netId = std::stoi(net->netName.substr(1,-1));
+//             tree* nettree = this->getTree(netId);
 
-			if(nettree->EndPoint[0]) leftBound = min(leftBound, nettree->EndPoint[0]->col);
-			else break;
-			rightBound = max(rightBound, nettree->EndPoint[1]->col);
-			lowerBound = min(lowerBound, nettree->EndPoint[2]->row);
-			upperBound = max(upperBound, nettree->EndPoint[3]->row);
-		}
+// 			if(nettree->EndPoint[0]) leftBound = min(leftBound, nettree->EndPoint[0]->col);
+// 			else break;
+// 			rightBound = max(rightBound, nettree->EndPoint[1]->col);
+// 			lowerBound = min(lowerBound, nettree->EndPoint[2]->row);
+// 			upperBound = max(upperBound, nettree->EndPoint[3]->row);
+// 		}
 		
-		log10Count[log10(leftBound != INT32_MAX ? (-leftBound + rightBound + 1) * (-lowerBound + upperBound + 1) : 1)]++;
-	}
+// 		log10Count[log10(leftBound != INT32_MAX ? (-leftBound + rightBound + 1) * (-lowerBound + upperBound + 1) : 1)]++;
+// 	}
 
-	for(int i=0; i<10; i++){
-		std::cout << log10Count[i] << " ";
-	}
-	std::cout << std::endl;
+// 	for(int i=0; i<10; i++){
+// 		std::cout << log10Count[i] << " ";
+// 	}
+// 	std::cout << std::endl;
 
-}
+// }
 
-std::pair<std::string,CellInst*> Graph::cellMoving(){
-	// after the init each time pop one possible movement
+// std::pair<std::string,CellInst*> Graph::cellMoving(){
+// 	// after the init each time pop one possible movement
 	
-	//check -> had not moved, (check coor)
-	//		  enough capacity (this part not completely implement) 
-	auto validMovement = [&](CellInst* cell, int voltageId){
-		if(cell->row != cell->originalRow || cell->col != cell->originalCol)
-			return false;
+// 	//check -> had not moved, (check coor)
+// 	//		  enough capacity (this part not completely implement) 
+// 	auto validMovement = [&](CellInst* cell, int voltageId){
+// 		if(cell->row != cell->originalRow || cell->col != cell->originalCol)
+// 			return false;
 		
-		std::vector<int> layersCurCap(LayerNum() + 1);
-		for(int i = 1; i <= LayerNum(); i++){
-			layersCurCap[i] = (*this) (cell->row, cell->col, i).get_remaining();
-		}
+// 		std::vector<int> layersCurCap(LayerNum() + 1);
+// 		for(int i = 1; i <= LayerNum(); i++){
+// 			layersCurCap[i] = (*this) (cell->row, cell->col, i).get_remaining();
+// 		}
 
-		//std::vector< std::unordered_set<Net*>> layersNet(LayerNum() + 1);
-		for(auto [name, pin] : cell->mCell->pins){
-			//layersNet[pin].insert(name);
-			//layersCurCap[pin] --;
-		}
+// 		//std::vector< std::unordered_set<Net*>> layersNet(LayerNum() + 1);
+// 		for(auto [name, pin] : cell->mCell->pins){
+// 			//layersNet[pin].insert(name);
+// 			//layersCurCap[pin] --;
+// 		}
 
-		for(auto [name, blkg] : cell->mCell->blkgs){
-			layersCurCap[blkg.first] -= blkg.second;
-		}
+// 		for(auto [name, blkg] : cell->mCell->blkgs){
+// 			layersCurCap[blkg.first] -= blkg.second;
+// 		}
 
-		for(auto curCap : layersCurCap){
-			if(curCap < 0) return false;
-		}
+// 		for(auto curCap : layersCurCap){
+// 			if(curCap < 0) return false;
+// 		}
 
-		return true;
-	};
+// 		return true;
+// 	};
 
-	while(candiPq.size()){
-		auto [gain, cellId, voltageId] = candiPq.top();
-		candiPq.pop();
-		CellInst* cell = CellInsts["C" + std::to_string(cellId)];
+// 	while(candiPq.size()){
+// 		auto [gain, cellId, voltageId] = candiPq.top();
+// 		candiPq.pop();
+// 		CellInst* cell = CellInsts["C" + std::to_string(cellId)];
 
-        //std::cout<<"Remov!\n";
-        removeCellsBlkg(cell);
+//         //std::cout<<"Remov!\n";
+//         removeCellsBlkg(cell);
 
-		if(validMovement(cell, voltageId)){
-			cell->row = voltageAreas[cell->vArea][voltageId].first;
-			cell->col = voltageAreas[cell->vArea][voltageId].second;
-            if(!insertCellsBlkg(cell)){
-				//removeCellsBlkg(cell);
-				cell->row = cell->originalRow;
-				cell->col = cell->originalCol;
-			}else return {"C" + std::to_string(cellId),cell};
-		}
-        insertCellsBlkg(cell);
-	}
+// 		if(validMovement(cell, voltageId)){
+// 			cell->row = voltageAreas[cell->vArea][voltageId].first;
+// 			cell->col = voltageAreas[cell->vArea][voltageId].second;
+//             if(!insertCellsBlkg(cell)){
+// 				//removeCellsBlkg(cell);
+// 				cell->row = cell->originalRow;
+// 				cell->col = cell->originalCol;
+// 			}else return {"C" + std::to_string(cellId),cell};
+// 		}
+//         insertCellsBlkg(cell);
+// 	}
 
-	return {"None",nullptr};
+// 	return {"None",nullptr};
 
-}
+// }
 
-void Graph::placementInit(){	
-	for(auto& p : CellInsts){
-		p.second->fixCell();
-	}
+// void Graph::placementInit(){	
+// 	for(auto& p : CellInsts){
+// 		p.second->fixCell();
+// 	}
 
-	//updating fixed bounding box (Net)
-	for(auto& p : Nets){
-		p.second->updateFixedBoundingBox();
-	}
+// 	//updating fixed bounding box (Net)
+// 	for(auto& p : Nets){
+// 		p.second->updateFixedBoundingBox();
+// 	}
 
-	//updating optimal region (CellInst)
-	for(auto& p : CellInsts){
-		p.second->updateOptimalRegion();
-        insertCellsBlkg(p.second);
-	}	
+// 	//updating optimal region (CellInst)
+// 	for(auto& p : CellInsts){
+// 		p.second->updateOptimalRegion();
+//         insertCellsBlkg(p.second);
+// 	}	
 
-	//calculate every possible movable position's grade 
-	for(auto& p : CellInsts){
-		CellInst* cPtr = p.second;
-		if(!cPtr -> Movable) continue;
+// 	//calculate every possible movable position's grade 
+// 	for(auto& p : CellInsts){
+// 		CellInst* cPtr = p.second;
+// 		if(!cPtr -> Movable) continue;
 		
-		int voltageType = cPtr->vArea;
-		if(voltageType == -1) continue; //why not mova
+// 		int voltageType = cPtr->vArea;
+// 		if(voltageType == -1) continue; //why not mova
 
-		for(int i = 0; i < voltageAreas[voltageType].size(); i++){
-			auto & coor = voltageAreas[voltageType][i];
-			if(!cPtr->inOptimalRegion(coor.first, coor.second)) continue;
+// 		for(int i = 0; i < voltageAreas[voltageType].size(); i++){
+// 			auto & coor = voltageAreas[voltageType][i];
+// 			if(!cPtr->inOptimalRegion(coor.first, coor.second)) continue;
 			
-			int gain = 0;
-			for(auto& net : cPtr->nets){
-				gain += net->costToBox(cPtr->row, cPtr->col);
-				gain -= net->costToBox(coor.first, coor.second);
-			}
+// 			int gain = 0;
+// 			for(auto& net : cPtr->nets){
+// 				gain += net->costToBox(cPtr->row, cPtr->col);
+// 				gain -= net->costToBox(coor.first, coor.second);
+// 			}
 
-			//REMIND: gain / cell's index / grid index in the voltage
-			if(gain >= 0) candiPq.push({gain, stoi(p.first.substr(1)), i });
-		}
-	}
-}
-bool Graph::removeCellsBlkg(CellInst* cell){	
-	for(auto [name, blkg] : cell->mCell->blkgs){
-		auto& grid = (*this)(cell->row, cell->col, blkg.first);
-		grid.delete_demand(blkg.second);
-	}
-	return true;
-}
+// 			//REMIND: gain / cell's index / grid index in the voltage
+// 			if(gain >= 0) candiPq.push({gain, stoi(p.first.substr(1)), i });
+// 		}
+// 	}
+// }
+// bool Graph::removeCellsBlkg(CellInst* cell){	
+// 	for(auto [name, blkg] : cell->mCell->blkgs){
+// 		auto& grid = (*this)(cell->row, cell->col, blkg.first);
+// 		grid.delete_demand(blkg.second);
+// 	}
+// 	return true;
+// }
 
-bool Graph::insertCellsBlkg(CellInst* cell){
-	for(auto [name, blkg] : cell->mCell->blkgs){
-		auto& grid = (*this)(cell->row, cell->col, blkg.first);
-        if(grid.get_remaining()<blkg.second)return false;
-		grid.add_demand(blkg.second);
-	}
-	return true;
-}
+// bool Graph::insertCellsBlkg(CellInst* cell){
+// 	for(auto [name, blkg] : cell->mCell->blkgs){
+// 		auto& grid = (*this)(cell->row, cell->col, blkg.first);
+//         if(grid.get_remaining()<blkg.second)return false;
+// 		grid.add_demand(blkg.second);
+// 	}
+// 	return true;
+// }
 
 void Graph::updateTree(int NetId,tree*t)
 {

@@ -23,7 +23,7 @@ struct csoln
     unsigned char rowcol[D-2];  // row = rowcol[]/16, col = rowcol[]%16, 
     unsigned char neighbor[2*D-2];
 };
-struct csoln *LUT[D+1][MGROUP] ;  // storing 4 .. D
+struct csoln *LUT[D+1][MGROUP];  // storing 4 .. D
 int numsoln[D+1][MGROUP];
 
 struct point
@@ -57,7 +57,6 @@ void readLUT()
     int d, i, j, k, kk, ns, nn;
 
     init_param();
-
     
     for (i=0; i<=255; i++) {
         if ('0'<=i && i<='9')
@@ -127,17 +126,18 @@ void readLUT()
         }
     }
 
-    #if ROUTING==1
-    if (fprt&&fclose(fprt)== EOF) {
-        printf("Error close %s\n", POSTFILE);
-        exit(1);
-    }
-    #endif
-    if(fpwv&&fclose(fpwv)==EOF)
-    {
-        printf("Error close %s\n", POWVFILE);
-        exit(1);
-    }
+    
+    fclose(fpwv);
+    
+
+#if ROUTING==1
+    // fprt=fopen(POSTFILE, "r");
+    // if (fprt == NULL) {
+    //     printf("Error in opening %s\n", POSTFILE);
+    //     exit(1);
+    // }
+    fclose(fprt);
+#endif
 }
 
 DTYPE flute_wl(int d, DTYPE x[], DTYPE y[], int acc)
@@ -580,10 +580,10 @@ static int ordery(const void *a, const void *b)
 
 Tree flute(int d, DTYPE x[], DTYPE y[], int acc)
 {
-    DTYPE *xs = NULL, *ys =NULL, minval;
-    int *s=NULL;
+    DTYPE *xs, *ys, minval;
+    int *s;
     int i, j, k, minidx;
-    struct point *pt=NULL, **ptp=NULL, *tmpp=NULL;
+    struct point *pt, **ptp, *tmpp;
     Tree t;
     
     if (d==2) {
@@ -626,7 +626,6 @@ Tree flute(int d, DTYPE x[], DTYPE y[], int acc)
                 ptp[minidx] = tmpp;
             }
         } else {
-            //struct point * tmpMemory = malloc(sizeof(struct point *));
             qsort(ptp, d, sizeof(struct point *), orderx);
         }
 
@@ -683,13 +682,6 @@ Tree flute(int d, DTYPE x[], DTYPE y[], int acc)
         free(ptp);
     }
 
-    // for(int i = 0;i<D+1;i++)
-    // {
-    //     for(int j = 0;j<MGROUP;j++)
-    //         if(LUT[i][j]!=NULL)
-    //             free(LUT[i][j]);
-    // }
-    
     return t;
 }
 
