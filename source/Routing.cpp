@@ -125,6 +125,7 @@ float RipUpNet(Graph*graph,NetGrids*net)
             sc+=pf*weight;
         }
     }
+    net->passScore-=sc;
     graph->score-=sc;
     return sc;
 }
@@ -147,6 +148,7 @@ float AddingNet(Graph*graph,NetGrids*net)
             }
         }
     }
+    net->passScore+=sc;
     graph->score+=sc;
     return sc;
 }
@@ -230,19 +232,30 @@ bool IsIntree(node*v,std::unordered_map<node*,bool>&t1Point)
     return t1Point.find(v)!=t1Point.end()&&t1Point.at(v);
 }
 
-void LabelIntree(Graph*graph,NetGrids*net,node*v,std::unordered_map<node*,bool>&t1Point)
+tree* LabelIntree(Graph*graph,NetGrids*net,node*v,std::unordered_map<node*,bool>&t1Point)
 {
+    tree* path = new tree;
+    node*last = new node(v->p);
+    path->addNode(last);
+    v = v->parent;
+    
     while(v)
     {
+        node*n = new node(v->p);
+        path->addNode(n);
+        last->connect(n);
+        last = n;
         auto &grid = (*graph)(v->p.row,v->p.col,v->p.lay);
-        if(t1Point.find(v)!=t1Point.end()){
-            t1Point.at(v) = true;  //--IMPORTANT
+        if(t1Point.find(v)!=t1Point.end()){//find 
             break;
         }
-        t1Point.insert({v,true});
+
+        
+        
         net->PassGrid(&grid);
         v = v->parent;
     }
+    return path;
 }
 
 bool BoundaryCheck(Graph*graph,NetGrids*net,node *v,const pos&delta,BoundingBox &Bx)
@@ -275,7 +288,9 @@ node* Search(Graph*graph,NetGrids*net,node *v,const pos&delta,std::unordered_map
     if(!BoundaryCheck(graph,net,v,delta,Bx))return nullptr;
     
     pos P = {v->p.row+delta.row,v->p.col+delta.col,v->p.lay+delta.lay};
+    //std::cout<<"get g1\n";
     Ggrid& g = (*graph)(P.row,P.col,P.lay);
+    //std::cout<<"get g\n";
     //Capacity checking
     if(!CapacityCheck(net,g))return nullptr;
 
@@ -452,7 +467,8 @@ tree* Tree2Tree(Graph*graph,NetGrids*net,tree*t1,tree*t2)
         t2->updateEndPoint(graph);    
         if(t2isPesudo)//t2 is pesudo
         {
-            Bx = BoundingBox (graph,&graph->getNet(net->NetId));
+            Bx = BoundingBox (graph,&graph->getNet(net->NetId),t1,*t2->all.begin());
+            //Bx = BoundingBox (graph,&graph->getNet(net->NetId));
         }
         else{
             Bx = BoundingBox (graph,&graph->getNet(net->NetId),t1,t2);
@@ -478,30 +494,12 @@ tree* Tree2Tree(Graph*graph,NetGrids*net,tree*t1,tree*t2)
         if(u = Search(graph,net,v,{1,0,0},gridCost,tmp,Bx))Q.push(u);//+row
         if(u = Search(graph,net,v,{-1,0,0},gridCost,tmp,Bx))Q.push(u);//-row
     }
-   
+
     //std::cout<<"Step4\n";//Step 4
     if(targetPoint){
-        LabelIntree(graph,net,targetPoint,t1Point);
-        std::set<node*>recycle;
-        for(auto n:tmp->all)
-        {
-            if(!IsIntree(n,t1Point)){
-                recycle.insert(n);
-                if(n->parent)
-                tmp->leaf.insert(n->parent);
-            }
-        }
-        for(auto n:recycle){
-            tmp->all.remove(n);
-            tmp->leaf.erase(n);
-            for(auto c:n->child)
-            {
-                if(c->parent==n)
-                    c->parent = nullptr;
-            }
-            delete n;
-        }
-        combine(t1,tmp);
+        tree * t = LabelIntree(graph,net,targetPoint,t1Point);
+        delete tmp;
+        combine(t1,t);
         combine(t1,t2);
         return t1;
     }
@@ -523,17 +521,11 @@ node* search2(Graph*graph,NetGrids*net,node *v,const pos&delta,tree*tmp,std::uno
     if(mark.find(str)!=mark.end())return nullptr; //mark
     mark[str] = true;
 
-    // std::cout<<"step7\n";
-    
     //Capacity checking
     if(!CapacityCheck(net,g))return nullptr;
-    // std::cout<<"step8\n";
     node * n = new node(P);
-    // std::cout<<"step9\n";
     tmp->addNode(n);
-    // std::cout<<"step10\n";
     v->connect(n);
-    // std::cout<<"step11\n";
     return n;
 }
 
@@ -582,30 +574,9 @@ tree* MazeRouting(Graph*graph,NetGrids*net,node*n1,node*n2)
     }
     //std::cout<<"step5\n";
     if(targetPoint){
-        
-        LabelIntree(graph,net,targetPoint,t1Point);
-        
-        std::set<node*>recycle;
-        for(auto n:tmp->all)
-        {
-            if(!IsIntree(n,t1Point)){
-                recycle.insert(n);
-                if(n->parent)
-                tmp->leaf.insert(n->parent);
-            }
-        }
-        for(auto n:recycle){
-            tmp->all.remove(n);
-            tmp->leaf.erase(n);
-            for(auto c:n->child)
-            {
-                if(c->parent==n)
-                    c->parent = nullptr;
-            }
-            delete n;
-        }
-
-        combine(n1->routing_tree,tmp);
+        tree * t = LabelIntree(graph,net,targetPoint,t1Point);
+        delete tmp;
+        combine(n1->routing_tree,t);
         combine(n1->routing_tree,n2->routing_tree);
         return n1->routing_tree;
     }
@@ -629,10 +600,9 @@ std::pair<ReroutInfo,bool> Reroute(Graph*graph,int NetId,TwoPinNets&twopins)
     {   
         if(initdemand!=-1)
         {
-
             T = MazeRouting(graph,netgrids,pins.first,pins.second);
-            // if(!T)
-            // T = Tree2Tree(graph,netgrids,pins.first->routing_tree,pins.second->routing_tree);
+            if(!T)
+            T = Tree2Tree(graph,netgrids,pins.first->routing_tree,pins.second->routing_tree);
         }
             
         if(!T) //把整個two-pin nets 繞線產生出來的tree全部collect成一棵回傳

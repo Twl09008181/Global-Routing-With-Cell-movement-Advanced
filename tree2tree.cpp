@@ -3,6 +3,7 @@
 #include "header/TwoPinNet.hpp"
 #include <time.h>
 #include <thread>
+#include <algorithm>
 Graph* graph = nullptr;
 
 
@@ -24,7 +25,7 @@ int main(int argc, char** argv)
     Init(path,fileName);    
 
     std::cout<<"graph Init done!\n";
-    
+    std::cout<<"Init score : "<<graph->score<<"\n";
     
     std::vector<std::string>MovingCell;
     
@@ -70,9 +71,94 @@ void Accept(Graph*graph,std::vector<ReroutInfo>&info)
     }
 }
 
+
+    struct netinfo{
+        int netId;
+        float weight;
+        int minLay;
+        float score;
+        float gain;
+        bool success;
+        time_t spendTime;
+    };
+    struct weightComp{
+        bool operator()(netinfo n1,netinfo n2)const
+        {
+            return n1.weight < n2.weight;
+        }
+    };
+    struct MInLayComp{
+        bool operator()(netinfo n1,netinfo n2)const
+        {
+            return n1.minLay > n2.minLay;
+        }
+    };
+    struct ScComp{
+        bool operator()(netinfo n1,netinfo n2)const
+        {
+            return n1.score > n2.score;
+        }
+    };
+    struct gainComp{
+        bool operator()(netinfo n1,netinfo n2)const
+        {
+            return n1.gain > n2.gain;
+        }
+    };
+        struct IdComp{
+        bool operator()(netinfo n1,netinfo n2)const
+        {
+            return n1.netId < n2.netId;
+        }
+    };
+
+
+
+void OutputInfo(std::vector<netinfo>&Netlist,std::string fileName)
+{
+    
+    using namespace std;
+
+    fileName = fileName.substr(0,fileName.size()-4);
+    fileName = fileName+"Info.txt";
+    std::ofstream os{fileName};
+    if(!os){
+        std::cerr<<"error:file "<<fileName<<" cann't open!\n";
+        exit(1);
+    } 
+    
+    os<<"sorted by gain--------------------------\n";
+
+
+    gainComp gcmp;
+
+    std::sort(Netlist.begin(),Netlist.end(),gcmp);
+    os<<"------------Net"<<"|"<<"-------OriginSc"<<"|"<<"--------------W"<<"|"<<"-------------ML"<<"|"<<"-----------Gain"<<"|"<<"-----------time"<<"\n";
+    os<<"---------------"<<"-"<<"---------------"<<"-"<<"---------------"<<"-"<<"---------------"<<"-"<<"---------------"<<"-"<<"---------------"<<"\n";
+    
+    for(auto n: Netlist)
+    {
+        os.width(15);os<<n.netId<<"|";
+        os.width(15);os<<n.score<<"|";
+        os.width(15);os<<n.weight<<"|";
+        os.width(15);os<<n.minLay<<"|";
+        
+        os.width(15);
+        if(n.success)
+        {
+            os<<n.gain<<"|";
+        }
+        else{
+            os<<"X"<<"|";
+        }
+        os.width(15);os<<n.spendTime<<"\n";
+    }
+    os.close();
+}
+
 void OnlyRouting(Graph*graph,std::string fileName,const std::vector<std::string> &cellinfo)
 {
-
+    
     int BestSc = graph->score;
     int success = 0;
     time_t t1,t2,t3;
@@ -80,8 +166,31 @@ void OnlyRouting(Graph*graph,std::string fileName,const std::vector<std::string>
     t2 = time(NULL);
     int interval = 60;
     int count = 0;
-    for(int i = 1;i<=graph->Nets.size();i++)
+
+
+    // std::sort
+    std::vector<netinfo>Netlist;Netlist.reserve(graph->Nets.size());
+    for(auto net:graph->Nets)
     {
+        int netId = std::stoi(net.first.substr(1,-1));
+        float sc = graph->getNetGrids(netId)->passScore;
+        Netlist.push_back({netId,net.second->weight,net.second->minLayer,sc});
+    }
+   
+    weightComp WComp;
+    MInLayComp MLComp;
+    ScComp ScoreCmp;
+    IdComp idcomp;
+    //std::sort(Netlist.begin(),Netlist.end(),WComp);
+    //std::sort(Netlist.begin(),Netlist.end(),MLComp);
+    // std::sort(Netlist.begin(),Netlist.end(),ScoreCmp);
+    std::sort(Netlist.begin(),Netlist.end(),idcomp);
+
+
+    for(auto &w:Netlist)
+    {
+        int i = w.netId;
+        // std::cout<<i<<"\n";
         count++;
         //-------------------------------------------------Routing Init---------------------------------------------------
         bool movingsuccess = true;
@@ -92,30 +201,42 @@ void OnlyRouting(Graph*graph,std::string fileName,const std::vector<std::string>
 
         //-------------------------------------------------RipUP----------------------------------------------------------
         auto net = graph->getNetGrids(i);
+        float originsC = net->passScore;
         RipUpNet(graph,net);RipId.push_back(i);
         //-------------------------------------------------RipUP----------------------------------------------------------
 
         //-------------------------------------------------Routing----------------------------------------------------------
         TwoPinNets twopins;
         get_two_pins(twopins,graph->getNet(i));
+
+        time_t tstart = time(NULL);
         std::pair<ReroutInfo,bool> result = Reroute(graph,net->NetId,twopins);
-        
+        time_t tend = time(NULL);
+        w.spendTime = tend-tstart;
+        w.success = result.second;
+
+
         if(result.second==false)//failed
         {
             movingsuccess = false;
+            w.gain = -FLT_MAX;
         }
         else{//success
             AddingNet(graph,result.first.netgrids);
             infos.push_back(result.first);
+
+            w.gain = originsC-result.first.netgrids->passScore;
         }
+        
+        
+        
         //-------------------------------------------------Routing----------------------------------------------------------
 
 
         //-------------------------------------------------Accept or Reject-------------------------------------------------
         if(movingsuccess)
         {
-            // if(graph->score < BestSc)//改成SA
-            if(true)
+            if(graph->score < BestSc)//改成SA
             {
                 Accept(graph,infos);
                 BestSc = graph->score;
@@ -125,6 +246,7 @@ void OnlyRouting(Graph*graph,std::string fileName,const std::vector<std::string>
                 t3 = time(NULL);
                 if(t3 > t2 + interval)//1 min 
                 {
+                   
                     t2 = time(NULL);
                     std::cout<<"spend "<<t3-t1<<" seconds\n";
                     std::cout<<"Best = "<<BestSc<<"\n";
@@ -146,6 +268,9 @@ void OnlyRouting(Graph*graph,std::string fileName,const std::vector<std::string>
     std::cout<<"DONE : spend "<<t3-t1<<" seconds\n";
     std::cout<<"count = "<<count<<"success = "<<success<<"\n";
     std::cout<<"score = "<<graph->score<<"\n";
+
+
+    OutputInfo(Netlist,fileName);
     OutPut(graph,fileName,cellinfo);
 }
 
@@ -314,4 +439,6 @@ void OutPut(Graph*graph,std::string fileName,const std::vector<std::string>&Movi
 
     os.close();
 }
+
+
 

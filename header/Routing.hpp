@@ -228,24 +228,38 @@ struct BoundingBox
         LayBound.second = graph->LayerNum();
         
         minCol = min(t1->EndPoint.at(0)->col,t2->EndPoint.at(0)->col);
-        minCol = max(minCol-flexCol,ColBound.first);
-
         maxCol = max(t1->EndPoint.at(1)->col,t2->EndPoint.at(1)->col);
-        maxCol = min(maxCol+flexCol,ColBound.second);
-
-
-
         minRow = min(t1->EndPoint.at(2)->row,t2->EndPoint.at(2)->row);
-        minRow = max(minRow-flexRow,RowBound.first);
-
         maxRow = max(t1->EndPoint.at(3)->row,t2->EndPoint.at(3)->row);
-        maxRow = min(maxRow+flexRow,RowBound.second);
-
         minLay = min(t1->EndPoint.at(4)->lay,t2->EndPoint.at(4)->lay);
-        minLay = max(minLay-flexLay,LayBound.first);
-
         maxLay = max(t1->EndPoint.at(5)->lay,t2->EndPoint.at(5)->lay);
-        maxLay = min(maxLay+flexLay,LayBound.second);
+    }
+    BoundingBox(Graph*graph,Net*net,tree*t1,node*n2)
+    {
+
+       
+        RowBound = graph->RowBound();
+        ColBound = graph->ColBound();
+        LayBound.first = net->minLayer;
+        LayBound.second = graph->LayerNum();
+        
+        minCol = min(t1->EndPoint.at(0)->col,n2->p.col-flexCol);
+        minCol = max(minCol,ColBound.first);
+
+        maxCol = max(t1->EndPoint.at(1)->col,n2->p.col+flexCol);
+        maxCol = min(maxCol,ColBound.second);
+
+
+
+        minRow = min(t1->EndPoint.at(2)->row,n2->p.row-flexRow);
+        minRow = max(minRow,RowBound.first);
+
+        maxRow = max(t1->EndPoint.at(3)->row,n2->p.row+flexRow);
+        maxRow = min(maxRow,RowBound.second);
+
+        minLay = t1->EndPoint.at(4)->lay;
+        maxLay = t1->EndPoint.at(5)->lay;
+        
     }
     void loosen()
     {
