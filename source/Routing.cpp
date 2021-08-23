@@ -405,12 +405,12 @@ std::priority_queue<node*,std::vector<node*>,minCost>&Q,std::unordered_map<std::
 {
     bool sourceInit = true;
     for(auto n:t1->all){
-        node * v = new node(n->p);tmp->addNode(v);
-        if(v->p.lay==-1)
+        if(n->p.lay==-1)
         {
-            sourceInit = AssingPesudo(graph,net,v);
+            sourceInit = AssingPesudo(graph,net,n);
             if(!sourceInit)break;
         }
+        node * v = new node(n->p);tmp->addNode(v);
         v->cost = 0;
         Q.push(v);
         gridCost[pos2str(v->p)] = 0;
@@ -449,6 +449,7 @@ tree* Tree2Tree(Graph*graph,NetGrids*net,tree*t1,tree*t2)
     std::unordered_map<std::string,node*>target;
     bool t2isPesudo = TargetTree(graph,net,t2,target);//Multi Target
     
+   
 
     BoundingBox Bx;
     if(sourceInit){
@@ -457,12 +458,12 @@ tree* Tree2Tree(Graph*graph,NetGrids*net,tree*t1,tree*t2)
         if(t2isPesudo)//t2 is pesudo
         {
             Bx = BoundingBox (graph,&graph->getNet(net->NetId),t1,*t2->all.begin());
-            //Bx = BoundingBox (graph,&graph->getNet(net->NetId));
         }
         else{
             Bx = BoundingBox (graph,&graph->getNet(net->NetId),t1,t2);
         }
     }
+  
     node *targetPoint = nullptr;
     while(!Q.empty()&&!targetPoint&&sourceInit)
     {
@@ -587,8 +588,8 @@ std::pair<ReroutInfo,bool> Reroute(Graph*graph,int NetId,TwoPinNets&twopins)
     {   
         if(initdemand!=-1)
         {
-            T = MazeRouting(graph,netgrids,pins.first,pins.second);
-            if(!T)
+            // T = MazeRouting(graph,netgrids,pins.first,pins.second);
+            // if(!T)
             T = Tree2Tree(graph,netgrids,pins.first->routing_tree,pins.second->routing_tree);
         }
             
