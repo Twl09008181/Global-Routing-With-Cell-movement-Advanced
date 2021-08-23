@@ -116,6 +116,11 @@ struct NetGrids
     {
         grids[grid] = false; //set to false
     }
+    void PassGrid(Graph*graph,node*n)
+    {
+        auto &grid = (*graph)(n->p.row,n->p.col,n->p.lay);
+        PassGrid(&grid);
+    }
     std::unordered_map<Ggrid*,bool>grids;
     int NetId;
     float passScore = 0;

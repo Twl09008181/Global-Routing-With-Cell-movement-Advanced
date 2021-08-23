@@ -225,24 +225,26 @@ void PrintAll(Graph*graph,std::vector<std::string>*segment)
 
 
 
-bool IsIntree(node*v,std::unordered_map<node*,bool>&t1Point)
-{  
-    return t1Point.find(v)!=t1Point.end()&&t1Point.at(v);
-}
-
-void LabelIntree(Graph*graph,NetGrids*net,node*v,std::unordered_map<node*,bool>&t1Point)
+tree* getPath(Graph*graph,NetGrids*net,node*v,std::unordered_map<node*,bool>&t1Point)
 {
+
+    net->PassGrid(graph,v);
+    tree* path = new tree;
+    node* last = new node(v->p);
+    path->addNode(last);
+    v = v->parent;
     while(v)
     {
-        auto &grid = (*graph)(v->p.row,v->p.col,v->p.lay);
-        if(t1Point.find(v)!=t1Point.end()){
-            t1Point.at(v) = true;  //--IMPORTANT
-            break;
-        }
-        t1Point.insert({v,true});
-        net->PassGrid(&grid);
+        node* n = new node(v->p);
+        path->addNode(n);
+        last->connect(n);
+        last = n;
+        net->PassGrid(graph,n);
+        if(t1Point.find(v)!=t1Point.end())break;
+        
         v = v->parent;
     }
+    return path;
 }
 
 
@@ -373,7 +375,7 @@ std::priority_queue<node*,std::vector<node*>,minCost>&Q,std::unordered_map<std::
         v->cost = 0;
         Q.push(v);
         gridCost[pos2str(v->p)] = 0;
-        t1Point[v] = false;//-----------------------important!! let it be false
+        t1Point[v] = true;
     }
     return sourceInit;
 }
@@ -401,11 +403,9 @@ tree* Tree2Tree(Graph*graph,NetGrids*net,tree*t1,tree*t2)
     //---------------------------------------------------------------Source(tree1) Init------------------------------------------------------
     std::priority_queue<node*,std::vector<node*>,minCost>Q;
     std::unordered_map<std::string,float>gridCost;
-    std::unordered_map<node*,bool>t1Point;//用來判斷isIntree
-    tree* tmp = new tree;//all saving in tmp (for threading....)
+    std::unordered_map<node*,bool>t1Point;
+    tree* tmp = new tree;//routing nodes are saved in tmp.
     bool sourceInit = SourceTree(graph,net,t1,tmp,Q,gridCost,t1Point);//Multi Source
-
-
     //---------------------------------------------------------------Target(tree2) Init------------------------------------------------------
     std::unordered_map<std::string,node*>target;
     bool t2isPesudo = TargetTree(graph,net,t2,target);//Multi Target
@@ -423,9 +423,7 @@ tree* Tree2Tree(Graph*graph,NetGrids*net,tree*t1,tree*t2)
             Bx = BoundingBox (graph,&graph->getNet(net->NetId),t1,t2);
         }
     }
-    
     node *targetPoint = nullptr;
-    
     while(!Q.empty()&&!targetPoint&&sourceInit)
     {
         node * v = Q.top();Q.pop();
@@ -446,28 +444,10 @@ tree* Tree2Tree(Graph*graph,NetGrids*net,tree*t1,tree*t2)
    
     //std::cout<<"Step4\n";//Step 4
     if(targetPoint){
-        LabelIntree(graph,net,targetPoint,t1Point);
-        std::set<node*>recycle;
-        for(auto n:tmp->all)
-        {
-            if(!IsIntree(n,t1Point)){
-                recycle.insert(n);
-                if(n->parent)
-                tmp->leaf.insert(n->parent);
-            }
-        }
-        for(auto n:recycle){
-            tmp->all.remove(n);
-            tmp->leaf.erase(n);
-            for(auto c:n->child)
-            {
-                if(c->parent==n)
-                    c->parent = nullptr;
-            }
-            delete n;
-        }
-        combine(t1,tmp);
+        tree*path = getPath(graph,net,targetPoint,t1Point);
+        combine(t1,path);
         combine(t1,t2);
+        delete tmp;
         return t1;
     }
     else {
