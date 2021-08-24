@@ -97,24 +97,34 @@ public:
 
     // bool insertCellsBlkg(CellInst* cell);
 
-
+    std::pair<int,int>&lay_uti(int Lay)//first : demand of layer , second : capacity of layer
+    {
+        if(Lay<1||Lay>LayerNum())
+        {
+            std::cerr<<"error input in lay_uti(int Lay)!\n";
+            exit(1);
+        }
+        return utilizations.at(Lay-1);
+    }
 //--------------------------------------------Data Mmeber------------------------------------------------------------
     std::unordered_map<std::string,MasterCell*>mCell;
     std::unordered_map<std::string,CellInst*>CellInsts;
     std::unordered_map<std::string,Net*>Nets;
     std::vector<std::vector<std::pair<int,int>>>voltageAreas;
     std::vector<Layer>Layers;
+
+    
+    
 private:
     using Ggrid1D = std::vector<Ggrid>;
     using Ggrid2D = std::vector<Ggrid1D>;
     using Ggrid3D = std::vector<Ggrid2D>;
     Ggrid3D Ggrids;
-    
+    std::vector<std::pair<int,int>>utilizations;
     int RowBegin,ColBegin;
     int RowEnd,ColEnd;
 
 	std::priority_queue< std::tuple<int, int, int>> candiPq;
-
 
 //---------------------------------------------RoutingTree-------------------------------------------------------------
 public:

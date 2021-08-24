@@ -125,6 +125,17 @@ void Graph::parser(std::string fileName){
         #endif
     }
 
+    //----------------------------------------------------utilization Record------------------------------------------------------
+    utilizations.resize(LayerNum());
+    for(int lay = 1;lay <= LayerNum();++lay)
+    {
+        int cap = 0;
+        for(int row = RowBegin; row <=RowEnd; ++row){
+            for(int col = ColBegin; col<=ColEnd;++col)
+                cap+=(*this)(row,col,lay).capacity;
+        }
+        lay_uti(lay).second = cap;
+    }
     //-------------------------------------------------------MasterCell------------------------------------------------------------
     is >> type >> value;
     #ifdef PARSER_TEST
@@ -158,6 +169,7 @@ void Graph::parser(std::string fileName){
             MasterCell::Blkg b = blkg.second;
             (*this)(row,col,b.first).add_demand(b.second);
             totalBlkg+=b.second;
+            lay_uti(b.first).first += b.second;
         }
     }
     std::cout<<"Total Blkg = "<<totalBlkg<<"\n";
@@ -371,6 +383,7 @@ void Graph::parser(std::string fileName){
 // 	for(auto [name, blkg] : cell->mCell->blkgs){
 // 		auto& grid = (*this)(cell->row, cell->col, blkg.first);
 // 		grid.delete_demand(blkg.second);
+//      lay_uti(blkg.first).first-=blkg.second;
 // 	}
 // 	return true;
 // }
@@ -380,6 +393,7 @@ void Graph::parser(std::string fileName){
 // 		auto& grid = (*this)(cell->row, cell->col, blkg.first);
 //         if(grid.get_remaining()<blkg.second)return false;
 // 		grid.add_demand(blkg.second);
+//       lay_uti(blkg.first).first+=blkg.second;
 // 	}
 // 	return true;
 // }

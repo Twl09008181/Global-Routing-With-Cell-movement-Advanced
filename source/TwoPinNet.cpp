@@ -197,7 +197,23 @@ void get_two_pins(std::list<TwoPinNet>& two_pin_nets,Net&net)
 }
 
 
-
+tree* TwoPinNet_Collect(TwoPinNets&twopins)
+{
+    
+    std::set<tree*>collect;//set(避免duplicate delete)
+    for(auto pins:twopins)
+    {
+        collect.insert(pins.first->routing_tree);
+        collect.insert(pins.second->routing_tree);
+    }
+    tree* CollectTree = new tree;
+    for(tree* t:collect)
+    {
+        for(node * pin : t->leaf){CollectTree->leaf.insert(pin);}//for rip-up
+        for(node * pin : t->all){CollectTree->all.push_front(pin);}//for delete
+    }
+    return CollectTree;
+}
 
 
 

@@ -1,6 +1,8 @@
 #include "header/graph.hpp"
 #include "header/Routing.hpp"
 #include "header/TwoPinNet.hpp"
+#include "header/analysis.hpp"
+
 #include <time.h>
 #include <thread>
 #include <algorithm>
@@ -14,164 +16,6 @@ void OutPut(Graph*graph,std::string fileName,const std::vector<std::string>&Movi
 
 
 
-int HPWL(Net*net)
-{
-
-    int minR = INT_MAX;
-    int maxR = 0;
-    int minC = INT_MAX;
-    int maxC = 0;
-    int minL = INT_MAX;
-    int maxL = 0;
-    using std::min;
-    using std::max;
-    TwoPinNets twopins;
-    get_two_pins(twopins,*net);
-    for(auto pin:twopins)
-    {
-        int r1 = pin.first->p.row;
-        int c1 = pin.first->p.col;
-        int l1 = pin.first->p.lay;
-
-        int r2 = pin.second->p.row;
-        int c2 = pin.second->p.col;
-        int l2 = pin.second->p.lay;
-
-       
-        minR = min(min(minR,r1),r2);
-        maxR = max(max(maxR,r1),r2);
-
-        minC = min(min(minC,c1),c2);
-
-        maxC = max(max(maxC,c1),c2);
-
-        if(l1!=-1){
-            minL = min(minL,l1);
-            maxL = max(maxL,l1);
-        }
-        if(l2!=-1)
-        {
-            minL = min(minL,l2);
-            maxL = max(maxL,l2);
-        }
-    }
-
-    int hpwl = maxR-minR + maxC-minC + maxL-minL;
-    return hpwl;
-}
-
-void HPWL_distribution(Graph*graph,std::string fileName)
-{
-    fileName = fileName.substr(0,fileName.size()-4) + "_hpwl.txt";
-
-    std::ofstream os{fileName};
-    if(!os){
-        std::cerr<<"error:file "<<fileName<<" cann't open!\n";
-        exit(1);
-    } 
-
-
-    std::map<int,int>distribution;
-
-    for(int i = 1;i<=graph->Nets.size();i++)
-    {
-        int hpwl = HPWL(&graph->getNet(i));
-        if(distribution.find(hpwl)==distribution.end())
-        {
-            distribution[hpwl] = 1;
-        }
-        else{
-            distribution.at(hpwl)+=1;
-        }
-    }
-
-
-    os.width(10);
-    os<<"------hpwl"<<"|"<<"-------num"<<"\n";
-    os<<"----------"<<"-"<<"----------"<<"\n";
-
-    for(auto d:distribution)
-    {
-        os.width(10);
-        os<<d.first<<"|";
-        os.width(10);
-        os<<d.second<<"\n";
-    }
-
-
-
-    os.close();
-}
-
-
-
-//輸出每一層的使用率 以及使用的net數量 ,還有這些net的hwpl分布
-
-
-
-
-void utilization(Graph*graph,std::string fileName)
-{
-    int maxR = graph->RowBound().second;
-    int minR = graph->RowBound().first;
-    int maxC = graph->ColBound().second;
-    int minC = graph->ColBound().first;
-
-    std::vector<float>util(graph->LayerNum(),0);
-    for(int l = 1;l<=graph->LayerNum();l++)
-    {
-        float dm = 0;
-        float cp = 0;
-
-        for(int r = minR;r<=maxR;r++)
-        {
-            for(int c=minC;c<=maxC;c++)
-            {
-                dm+=(*graph)(r,c,l).demand;
-                cp+=(*graph)(r,c,l).capacity;
-            }
-        }
-        util.at(l-1) = dm/cp*100;
-    }
-    
-    std::vector<int>LayNets;
-    LayNets.resize(graph->LayerNum()+1);
-
-    for(auto net:graph->netGrids)
-    {
-        for(auto grid:net->grids)
-        {
-            LayNets.at(grid.first->lay)+=1;
-        }
-    }
-
-
-    std::ofstream os{fileName.substr(0,fileName.size()-4)+"_ut.txt"};
-    if(!os)
-    {
-        std::cerr<<"open error!\n";exit(1);
-    }
-
-
-    os<<"----------Layer"<<"|"<<"----utilization"<<"|"<<"------NumOfNets"<<"\n";
-    os<<"---------------"<<"-"<<"---------------"<<"-"<<"---------------"<<"\n";
-
-    os.width(15);
-    
-    for(int l = 1;l<=graph->LayerNum();l++)
-    {
-        os.width(15);
-        os<<l;
-        os.width(15);
-        os<<util.at(l-1)<<"%";
-        os.width(15);
-        os<<LayNets.at(l)<<"\n";
-
-    }
-    
-    os.close();
-
-}
 
 
 int main(int argc, char** argv)
@@ -190,8 +34,25 @@ int main(int argc, char** argv)
     std::cout<<"Init score : "<<graph->score<<"\n";
     
     
-    // HPWL_distribution(graph,fileName);
-    utilization(graph,fileName);
+    //---------------New Feature-----------------------
+    //HPWL_distribution(graph,fileName);
+    //utilization(graph,fileName);
+    
+
+    //HPWL(Net*net);  //net's HPWL
+    //graph->lay_uti(Lay); // get Layer's utiltization
+    //---------------設定Net繞線的layer------------------
+    
+    auto &net1 = graph->getNet(1);
+    auto pins = twoPinsGen(net1,3);//這樣就會強制設定他產生在layer3的 two-pin-net  ("允許往下",但初始是在layer3,更有機會在高層完成繞線)
+    auto result = Reroute(graph,1,pins);
+    printTree(graph,&net1,result.first.nettree);
+
+    //,可以透過觀察各層的使用率graph->lay_uti(Lay); 以及 HPWL(Net*net);來配合設定哪條net要從高層開始twoPinsGen
+
+
+    //OnlyRouting(graph,fileName,{});
+   
     
 
     
@@ -232,9 +93,36 @@ void Accept(Graph*graph,std::vector<ReroutInfo>&info)
 }
 
 
+struct netinfo{
+    int netId;
+    int hpwl;
+    int wl;
+};
+std::vector<netinfo> getNetlist(Graph*graph)//sort by  wl - hpwl
+{
+    std::vector<netinfo>nets;nets.resize(graph->Nets.size());
+    for(int i = 1;i<=graph->Nets.size();i++)
+    {
+        nets.at(i-1).netId = i;
+        nets.at(i-1).hpwl = HPWL(&graph->getNet(i));
+    }
+    for(int i = 1;i<=graph->Nets.size();i++)
+    {
+        nets.at(i-1).wl = graph->getNetGrids(i)->wl(); 
+    }
+    auto cmp = [](const netinfo&n1,const netinfo&n2)
+    {
+        return n1.wl-n1.hpwl > n2.wl-n1.hpwl;
+    };
+    std::sort(nets.begin(),nets.end(),cmp);
+    return nets;
+}
+
 
 void OnlyRouting(Graph*graph,std::string fileName,const std::vector<std::string> &cellinfo)
 {
+    
+
     
     int BestSc = graph->score;
     int success = 0;
@@ -243,9 +131,13 @@ void OnlyRouting(Graph*graph,std::string fileName,const std::vector<std::string>
     t2 = time(NULL);
     int interval = 60;
     int count = 0;
+    
+    
+    std::vector<netinfo> netlist = getNetlist(graph);//get netList
 
-    for(int i = 1;i<=graph->Nets.size();i++)
+    for(auto n :netlist)
     {
+        int i = n.netId;
         count++;
         //-------------------------------------------------Routing Init---------------------------------------------------
         bool movingsuccess = true;
@@ -255,13 +147,15 @@ void OnlyRouting(Graph*graph,std::string fileName,const std::vector<std::string>
 
         //-------------------------------------------------RipUP----------------------------------------------------------
         auto net = graph->getNetGrids(i);
-        float originsC = net->passScore;
         RipUpNet(graph,net);RipId.push_back(i);
         //-------------------------------------------------RipUP----------------------------------------------------------
 
         //-------------------------------------------------Routing----------------------------------------------------------
         TwoPinNets twopins;
-        get_two_pins(twopins,graph->getNet(i));
+        twopins = twoPinsGen(graph->getNet(i));
+        
+    
+
         std::pair<ReroutInfo,bool> result = Reroute(graph,net->NetId,twopins);
         if(result.second==false)//failed
         {
@@ -278,7 +172,8 @@ void OnlyRouting(Graph*graph,std::string fileName,const std::vector<std::string>
         //-------------------------------------------------Accept or Reject-------------------------------------------------
         if(movingsuccess)
         {
-            if(graph->score < BestSc)//改成SA
+            //if(graph->score < BestSc)//改成SA
+            if((graph->score < BestSc))
             {
                 Accept(graph,infos);
                 BestSc = graph->score;
@@ -290,7 +185,6 @@ void OnlyRouting(Graph*graph,std::string fileName,const std::vector<std::string>
                     std::cout<<"spend "<<t3-t1<<" seconds\n";
                     std::cout<<"Best = "<<BestSc<<"\n";
                     std::cout<<"count = "<<count<<"success = "<<success<<"\n";
-                    std::cout<<"Net : "<<i<<"\n";
                     OutPut(graph,fileName,cellinfo);
                 }
             }

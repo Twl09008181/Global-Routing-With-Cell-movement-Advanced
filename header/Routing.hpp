@@ -124,6 +124,12 @@ struct NetGrids
     std::unordered_map<Ggrid*,bool>grids;
     int NetId;
     float passScore = 0;
+
+    int wl()
+    {
+        return grids.size();
+    }
+    
 };
 
 using TwoPinNet = std::pair<node*,node*>;
@@ -160,7 +166,7 @@ void printTree(Graph*graph,Net*net,tree*t,std::vector<std::string>*segment=nullp
 void PrintAll(Graph*graph,std::vector<std::string>*segment=nullptr);
 //two pin net (untested)
 int TwoPinNetsInit(Graph*graph,NetGrids*net,TwoPinNets&pinset);
-
+TwoPinNets twoPinsGen(Net&net,int defaultLayer=-1);
 
 
 //Routing Interface

@@ -1,5 +1,5 @@
 #include "../header/Routing.hpp"
-
+#include "../header/TwoPinNet.hpp"
 
 bool node::IsSingle()//Is leaf and no parent
 {
@@ -123,6 +123,7 @@ float RipUpNet(Graph*graph,NetGrids*net)
             float pf = graph->getLay(grid->lay).powerFactor;
             float weight = graph->getNet(net->NetId).weight;
             sc+=pf*weight;
+            graph->lay_uti(grid->lay).first-=1;
         }
     }
     net->passScore-=sc;
@@ -145,6 +146,7 @@ float AddingNet(Graph*graph,NetGrids*net)
                 float pf = graph->getLay(grid->lay).powerFactor;
                 float weight = graph->getNet(net->NetId).weight;
                 sc+=pf*weight;
+                graph->lay_uti(grid->lay).first+=1;
             }
         }
     }
@@ -575,6 +577,8 @@ tree* MazeRouting(Graph*graph,NetGrids*net,node*n1,node*n2)
 }
 
 
+
+
 std::pair<ReroutInfo,bool> Reroute(Graph*graph,int NetId,TwoPinNets&twopins)
 {
     //std::cout<<"init"<<"\n";
@@ -592,24 +596,28 @@ std::pair<ReroutInfo,bool> Reroute(Graph*graph,int NetId,TwoPinNets&twopins)
             // if(!T)
             T = Tree2Tree(graph,netgrids,pins.first->routing_tree,pins.second->routing_tree);
         }
-            
         if(!T) //把整個two-pin nets 繞線產生出來的tree全部collect成一棵回傳
         {
-            std::set<tree*>collect;//set(避免duplicate delete)
-            for(auto pins:twopins)
-            {
-                collect.insert(pins.first->routing_tree);
-                collect.insert(pins.second->routing_tree);
-            }
-            tree* CollectTree = new tree;
-            for(tree* t:collect)
-            {
-                for(node * pin : t->leaf){CollectTree->leaf.insert(pin);}//for rip-up
-                for(node * pin : t->all){CollectTree->all.push_front(pin);}//for delete
-            }
-        
+            tree*CollectTree = TwoPinNet_Collect(twopins);
             return {ReroutInfo{CollectTree,netgrids},false};
         }
     }
     return {ReroutInfo{T,netgrids},true};
+}
+
+TwoPinNets twoPinsGen(Net&net,int defaultLayer)
+{
+
+    int Lcstr = net.minLayer;
+    if(defaultLayer!=-1&&defaultLayer>=Lcstr)
+    {
+        net.minLayer = defaultLayer;
+    }
+
+    TwoPinNets twopins;
+    get_two_pins(twopins,net);
+
+    //reset
+    net.minLayer = Lcstr;
+    return twopins;
 }
