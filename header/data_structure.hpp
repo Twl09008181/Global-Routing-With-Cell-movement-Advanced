@@ -91,7 +91,7 @@ struct Ggrid{
 //----------------------------------Data Member----------------------------------------------
     int row,col,lay;
     int capacity;
-private:  
+// private:  
     int demand;
     
 };
