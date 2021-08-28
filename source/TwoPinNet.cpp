@@ -1,12 +1,38 @@
 #include "../header/TwoPinNet.hpp"
+// void get_two_pins(TwoPinNets& two_pin_nets,Net&net);
+// tree* TwoPinNet_Collect(TwoPinNets&twopins);
+// bool is_pseudo(node*pin,std::unordered_map<std::string,std::set<int>>&PointMap);
+// void two_pins_preprocessing(pos p,int rmax,int cmax,int LCstr,std::unordered_map<std::string,std::set<int>>&PointMap,std::vector<int>&tempDemand);
+// int PinLayAssign(node*pin,int rmax,int cmax,int laymax,int LCstr,std::unordered_map<std::string,std::set<int>>&PointMap,std::vector<int>&tempDemand);
+// void MultiLayerPoint(node*pin,std::unordered_map<std::string,std::set<int>>&PointMap,TwoPinNets& two_pin_nets);
+// void treeInit(std::unordered_map<std::string,node*>&pins,std::unordered_map<std::string,std::set<int>>&PointMap,TwoPinNets& two_pin_nets);
 
-bool is_pseudo(node*pin,std::map<std::string,std::set<int>>&PointMap)
+
+
+
+bool is_pseudo(node*pin,std::unordered_map<std::string,std::set<int>>&PointMap)
 {
     std::string position_2d = std::to_string(pin->p.row)+","+std::to_string(pin->p.col);
     return PointMap.find(position_2d)==PointMap.end();
 }
 
-void two_pins_preprocessing(pos p,int rmax,int cmax,int LCstr,std::map<std::string,std::set<int>>&PointMap,std::vector<int>&tempDemand)
+int encode(int r,int c,int cmax)
+{
+    return r*cmax+c;
+}
+void updateTempDmd(int codePos,std::unordered_map<int,int>&tempDemand)
+{
+    auto temp = tempDemand.find(codePos);
+    if(temp==tempDemand.end())
+    {
+        tempDemand.insert({codePos,1});
+    }
+    else{
+        temp->second++;
+    }
+}
+
+void two_pins_preprocessing(pos p,int rmax,int cmax,int LCstr,std::unordered_map<std::string,std::set<int>>&PointMap,std::unordered_map<int,int>&tempDemand)
 {
     std::string position_2d = std::to_string(p.row)+","+std::to_string(p.col);
     if(PointMap.find(position_2d) != PointMap.end())
@@ -18,16 +44,20 @@ void two_pins_preprocessing(pos p,int rmax,int cmax,int LCstr,std::map<std::stri
         std::set<int>layRecord; layRecord.insert(p.lay);
         PointMap[position_2d] = layRecord; 
     }
-    tempDemand.at((p.lay-1)*rmax + (p.row-1)*cmax + (p.col-1))+=1;
+    // tempDemand.at((p.lay-1)*rmax + (p.row-1)*cmax + (p.col-1))+=1;
+
+    updateTempDmd(encode(p.row,p.col,cmax),tempDemand);
+
+
     if(p.lay<LCstr){//minlayer constraint
         auto & layRecord = PointMap[position_2d];
         layRecord.insert(LCstr);
-        tempDemand.at((LCstr-1)*rmax + (p.row-1)*cmax + (p.col-1))+=1;
+        updateTempDmd(encode(p.row,p.col,LCstr),tempDemand);
     }
 }
 
 
-int PinLayAssign(node*pin,int rmax,int cmax,int laymax,int LCstr,std::map<std::string,std::set<int>>&PointMap,std::vector<int>&tempDemand)
+int PinLayAssign(node*pin,int rmax,int cmax,int laymax,int LCstr,std::unordered_map<std::string,std::set<int>>&PointMap,std::unordered_map<int,int>&tempDemand)
 {
     std::string position_2d = std::to_string(pin->p.row)+","+std::to_string(pin->p.col);
     int bestLayer = 0;
@@ -35,7 +65,11 @@ int PinLayAssign(node*pin,int rmax,int cmax,int laymax,int LCstr,std::map<std::s
     for(auto ptr = PointMap[position_2d].begin();ptr!=PointMap[position_2d].end();++ptr)//Scan layer
     {
         if(*ptr < LCstr)continue;//not a feasible solution
-        int used = tempDemand.at((*ptr-1)*rmax + (pin->p.row-1)*cmax + (pin->p.col-1));
+        // int used = tempDemand.at((*ptr-1)*rmax + (pin->p.row-1)*cmax + (pin->p.col-1));
+
+        auto temp = tempDemand.find(encode(pin->p.row,pin->p.col,cmax));
+        int used = (temp==tempDemand.end())? 0:temp->second;
+
         if((*graph)(pin->p.row,pin->p.col,*ptr).get_remaining()-used > mostcap)
         {
             bestLayer = *ptr;
@@ -51,7 +85,7 @@ int PinLayAssign(node*pin,int rmax,int cmax,int laymax,int LCstr,std::map<std::s
 }
 
 
-void MultiLayerPoint(node*pin,std::map<std::string,std::set<int>>&PointMap,TwoPinNets& two_pin_nets)
+void MultiLayerPoint(node*pin,std::unordered_map<std::string,std::set<int>>&PointMap,TwoPinNets& two_pin_nets)
 {
     std::string position2d = std::to_string(pin->p.row)+","+std::to_string(pin->p.col);
     if(!is_pseudo(pin,PointMap))//real-pin
@@ -91,8 +125,7 @@ void MultiLayerPoint(node*pin,std::map<std::string,std::set<int>>&PointMap,TwoPi
 }
 
 
-
-void treeInit(std::map<std::string,node*>&pins,std::map<std::string,std::set<int>>&PointMap,TwoPinNets& two_pin_nets)
+void treeInit(std::unordered_map<std::string,node*>&pins,std::unordered_map<std::string,std::set<int>>&PointMap,TwoPinNets& two_pin_nets)
 {
     for(auto p:pins)
     {
@@ -105,16 +138,25 @@ void treeInit(std::map<std::string,node*>&pins,std::map<std::string,std::set<int
     }
 }
 
+
+#include <chrono>
+
+extern std::chrono::duration<double, std::milli> flutetime;
+
 void get_two_pins(std::list<TwoPinNet>& two_pin_nets,Net&net)
 {
     
     int rowMax = graph->RowBound().second;
     int colMax = graph->ColBound().second;
     int LayMax = graph->LayerNum();
-
-    std::vector<int>tempDemand(rowMax*colMax*LayMax);// (r,c,l) : index = (l-1)*rowMax+(r-1)*colMax + c-1
+    auto t1 = std::chrono::high_resolution_clock::now();
+    // std::vector<int>tempDemand(rowMax*colMax*LayMax);// (r,c,l) : index = (l-1)*rowMax+(r-1)*colMax + c-1
+    std::unordered_map<int,int>tempDemand;
+    auto t2 = std::chrono::high_resolution_clock::now();
+    flutetime+=t2-t1;
     int minLayer = net.minLayer;
 
+    
     size_t len = net.net_pins.size();
     size_t real_len = 0;//some pins are at same row,col,lay.
     int row[len];
@@ -124,24 +166,30 @@ void get_two_pins(std::list<TwoPinNet>& two_pin_nets,Net&net)
     //and using Point Map to record pins Info
     //1. tell if a pin is pseudo 
     //2. record those pins at same 2D-pos but different lay.
-    std::map<std::string,std::set<int>>PointMap;
-
+    std::unordered_map<std::string,std::set<int>>PointMap;
+    
     for(size_t i=0;i<len;++i){
         int r = net.net_pins.at(i).first->row;
         int c = net.net_pins.at(i).first->col;
         int l = net.net_pins.at(i).first->mCell->pins[net.net_pins.at(i).second];
+        
         two_pins_preprocessing(pos{r,c,l},rowMax,colMax,minLayer,PointMap,tempDemand);//updating PointMap&tempDemand
+        
+        
         row[real_len] = r;
         col[real_len] = c;
         real_len++;
     }
 
+
     //Step2 :Call flute to generate 2D steiner tree
-    Tree t = flute(real_len, col, row, ACCURACY);//x,y
+
     
+    Tree t = flute(real_len, col, row, ACCURACY);//x,y
 
 
-    std::map<std::string,node*>pins;//讓不同branch的相同pin同步,以免分配不同的lay
+
+    std::unordered_map<std::string,node*>pins;//讓不同branch的相同pin同步,以免分配不同的lay
     auto search = [&pins](int row,int col)
     {
         std::string pin = std::to_string(row)+","+std::to_string(col);
@@ -194,6 +242,8 @@ void get_two_pins(std::list<TwoPinNet>& two_pin_nets,Net&net)
 
     if(t.branch!=nullptr)
         free(t.branch);
+
+
 }
 
 

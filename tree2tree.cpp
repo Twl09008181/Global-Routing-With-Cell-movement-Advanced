@@ -32,6 +32,8 @@ std::chrono::duration<double, std::milli> RoutingTime;
 std::chrono::duration<double, std::milli> AcceptTime;
 std::chrono::duration<double, std::milli> RejectTime;
 std::chrono::duration<double, std::milli> pinsTime;
+
+std::chrono::duration<double, std::milli> flutetime;
 // std::vector<std::string> *strTable = nullptr;
 
 table strtable;
@@ -82,6 +84,12 @@ int main(int argc, char** argv)
 
 
     OnlyRouting(graph,fileName,{});
+
+    // for(int i = 1;i<=graph->Nets.size();i++)
+    // {
+    //     TwoPinNets pins;
+    //     get_two_pins(pins,graph->getNet(i));
+    // }
    
     t2 = std::chrono::high_resolution_clock::now();
 
@@ -101,6 +109,8 @@ int main(int argc, char** argv)
     std::cout<<"Acc time:"<<AcceptTime.count()/1000<<"s\n";
     std::cout<<"RejectTime time:"<<RejectTime.count()/1000<<"s\n";
     std::cout<<"pins time:"<<pinsTime.count()/1000<<"s\n";
+    std::cout<<"flute time "<<flutetime.count()/1000<<"s\n";
+    OutPut(graph,fileName,{});
     delete graph;
 	return 0;
 }

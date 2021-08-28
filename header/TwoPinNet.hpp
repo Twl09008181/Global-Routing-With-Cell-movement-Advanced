@@ -10,11 +10,11 @@ using TwoPinNets = std::list<TwoPinNet>;
 
 void get_two_pins(TwoPinNets& two_pin_nets,Net&net);
 tree* TwoPinNet_Collect(TwoPinNets&twopins);
-bool is_pseudo(node*pin,std::map<std::string,std::set<int>>&PointMap);
-void two_pins_preprocessing(pos p,int rmax,int cmax,int LCstr,std::map<std::string,std::set<int>>&PointMap,std::vector<int>&tempDemand);
-int PinLayAssign(node*pin,int rmax,int cmax,int laymax,int LCstr,std::map<std::string,std::set<int>>&PointMap,std::vector<int>&tempDemand);
-void MultiLayerPoint(node*pin,std::map<std::string,std::set<int>>&PointMap,TwoPinNets& two_pin_nets);
-void treeInit(std::map<std::string,node*>&pins,std::map<std::string,std::set<int>>&PointMap,TwoPinNets& two_pin_nets);
+bool is_pseudo(node*pin,std::unordered_map<std::string,std::set<int>>&PointMap);
+void two_pins_preprocessing(pos p,int rmax,int cmax,int LCstr,std::unordered_map<std::string,std::set<int>>&PointMap,std::vector<int>&tempDemand);
+int PinLayAssign(node*pin,int rmax,int cmax,int laymax,int LCstr,std::unordered_map<std::string,std::set<int>>&PointMap,std::vector<int>&tempDemand);
+void MultiLayerPoint(node*pin,std::unordered_map<std::string,std::set<int>>&PointMap,TwoPinNets& two_pin_nets);
+void treeInit(std::unordered_map<std::string,node*>&pins,std::unordered_map<std::string,std::set<int>>&PointMap,TwoPinNets& two_pin_nets);
 
 
 
