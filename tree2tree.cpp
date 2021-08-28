@@ -22,14 +22,24 @@ std::chrono::duration<double, std::milli> c3;
 std::chrono::duration<double, std::milli> c4;
 
 
+//reject time
+std::chrono::duration<double, std::milli> AddingTime;
+std::chrono::duration<double, std::milli> RipUPTime;
+std::chrono::duration<double, std::milli> IN;
+std::chrono::duration<double, std::milli> RoutingTime;
 
 
+std::chrono::duration<double, std::milli> AcceptTime;
+std::chrono::duration<double, std::milli> RejectTime;
+std::chrono::duration<double, std::milli> pinsTime;
 // std::vector<std::string> *strTable = nullptr;
 
 table strtable;
 
 int main(int argc, char** argv)
 {
+    auto t1 = std::chrono::high_resolution_clock::now();
+
     readLUT();
     if(argc!=2){
         std::cerr<<"Wrong parameters!"<<std::endl;
@@ -39,14 +49,17 @@ int main(int argc, char** argv)
     std::string fileName = argv[1];
 
     Init(path,fileName);    
-
+    
+    
     strtable.init(graph);
-
+    auto t2 = std::chrono::high_resolution_clock::now();
+    IN = t2-t1;
 
 
 
     std::cout<<"graph Init done!\n";
     std::cout<<"Init score : "<<graph->score<<"\n";
+    std::cout<<"init time :"<<(IN).count()/1000<<"s \n";
 
 
     
@@ -70,9 +83,24 @@ int main(int argc, char** argv)
 
     OnlyRouting(graph,fileName,{});
    
-    
+    t2 = std::chrono::high_resolution_clock::now();
 
+
+
+    std::chrono::duration<double, std::milli> t3(t2-t1);
+    std::cout<<"total : "<<t3.count()/1000<<" s \n";
     
+    std::cout<<"search part1:"<<c1.count()/1000<<"s\n";
+    std::cout<<"search part1:"<<c2.count()/1000<<"s\n";
+    std::cout<<"search part1:"<<c3.count()/1000<<"s\n";
+    std::cout<<"search total:"<<c4.count()/1000<<"s\n";
+
+    std::cout<<"Routing time:"<<RoutingTime.count()/1000<<"s\n";
+    std::cout<<"Adding time:"<<AddingTime.count()/1000<<"s\n";
+    std::cout<<"Ripup time:"<<RipUPTime.count()/1000<<"s\n";
+    std::cout<<"Acc time:"<<AcceptTime.count()/1000<<"s\n";
+    std::cout<<"RejectTime time:"<<RejectTime.count()/1000<<"s\n";
+    std::cout<<"pins time:"<<pinsTime.count()/1000<<"s\n";
     delete graph;
 	return 0;
 }
@@ -85,6 +113,7 @@ int main(int argc, char** argv)
 //AlreadyRipUP: 已經被RipUp過的netId
 void Reject(Graph*graph,std::vector<ReroutInfo>&info,std::vector<int>&AlreadyRipUp)
 {
+    auto t1 = std::chrono::high_resolution_clock::now();
     //Ripup routing result
     for(auto reroute:info)
     {
@@ -97,16 +126,22 @@ void Reject(Graph*graph,std::vector<ReroutInfo>&info,std::vector<int>&AlreadyRip
     {
         AddingNet(graph,graph->getNetGrids(netId));
     }
+
+    auto t2 = std::chrono::high_resolution_clock::now();
+    RejectTime+=t2-t1;
 }
 
 void Accept(Graph*graph,std::vector<ReroutInfo>&info)
 {
+    auto t1 = std::chrono::high_resolution_clock::now();
     for(auto reroute:info)
     {
         int netId = reroute.netgrids->NetId;
         graph->updateNetGrids(netId,reroute.netgrids);
         graph->updateTree(netId,reroute.nettree);
     }
+    auto t2 = std::chrono::high_resolution_clock::now();
+    AcceptTime+=t2-t1;
 }
 
 
@@ -152,6 +187,8 @@ void OnlyRouting(Graph*graph,std::string fileName,const std::vector<std::string>
     
     std::vector<netinfo> netlist = getNetlist(graph);//get netList
 
+
+    
     for(auto n :netlist)
     {
         int i = n.netId;
@@ -168,12 +205,18 @@ void OnlyRouting(Graph*graph,std::string fileName,const std::vector<std::string>
         //-------------------------------------------------RipUP----------------------------------------------------------
 
         //-------------------------------------------------Routing----------------------------------------------------------
+        auto t11 = std::chrono::high_resolution_clock::now();
         TwoPinNets twopins;
         twopins = twoPinsGen(graph->getNet(i));
-        
-    
+        auto t12 = std::chrono::high_resolution_clock::now();
+        pinsTime+=t12-t11;
 
+        t11 = std::chrono::high_resolution_clock::now();
         std::pair<ReroutInfo,bool> result = Reroute(graph,net->NetId,twopins);
+        t12 = std::chrono::high_resolution_clock::now();
+
+        RoutingTime+=t12-t11;
+
         if(result.second==false)//failed
         {
             movingsuccess = false;
@@ -187,6 +230,8 @@ void OnlyRouting(Graph*graph,std::string fileName,const std::vector<std::string>
 
 
         //-------------------------------------------------Accept or Reject-------------------------------------------------
+
+     
         if(movingsuccess)
         {
             //if(graph->score < BestSc)//改成SA
@@ -202,7 +247,7 @@ void OnlyRouting(Graph*graph,std::string fileName,const std::vector<std::string>
                     std::cout<<"spend "<<t3-t1<<" seconds\n";
                     std::cout<<"Best = "<<BestSc<<"\n";
                     std::cout<<"count = "<<count<<"success = "<<success<<"\n";
-                    OutPut(graph,fileName,cellinfo);
+                    // OutPut(graph,fileName,cellinfo);
                 }
             }
             else{//Reject
@@ -212,13 +257,14 @@ void OnlyRouting(Graph*graph,std::string fileName,const std::vector<std::string>
         else{//Reject
             Reject(graph,infos,RipId);
         }
+   
         //-------------------------------------------------Accept or Reject-------------------------------------------------  
     }
     t3 = time(NULL);
     std::cout<<"DONE : spend "<<t3-t1<<" seconds\n";
     std::cout<<"count = "<<count<<"success = "<<success<<"\n";
     std::cout<<"score = "<<graph->score<<"\n";
-    OutPut(graph,fileName,cellinfo);
+    // OutPut(graph,fileName,cellinfo);
 }
 
 

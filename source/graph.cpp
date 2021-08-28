@@ -408,7 +408,7 @@ void Graph::updateTree(int NetId,tree*t)
     tree * oldtree = routingTree.at(NetId-1);
     delete oldtree;
     routingTree.at(NetId-1) = t;
-    routingTree.at(NetId-1)->updateEndPoint(this);
+    // routingTree.at(NetId-1)->updateEndPoint(this);
 }
 void Graph::updateNetGrids(int NetId,NetGrids*netgrid)
 {
