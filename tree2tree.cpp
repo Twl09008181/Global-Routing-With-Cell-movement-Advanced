@@ -15,8 +15,18 @@ void OutPut(Graph*graph,std::string fileName,const std::vector<std::string>&Movi
 // void RoutingWithCellMOV(Graph*graph,std::string fileName,std::vector<std::string>&MovingCell,bool Ripall=false);
 
 
+#include <chrono>
+std::chrono::duration<double, std::milli> c1;
+std::chrono::duration<double, std::milli> c2;
+std::chrono::duration<double, std::milli> c3;
+std::chrono::duration<double, std::milli> c4;
 
 
+
+
+// std::vector<std::string> *strTable = nullptr;
+
+table strtable;
 
 int main(int argc, char** argv)
 {
@@ -30,8 +40,15 @@ int main(int argc, char** argv)
 
     Init(path,fileName);    
 
+    strtable.init(graph);
+
+
+
+
     std::cout<<"graph Init done!\n";
     std::cout<<"Init score : "<<graph->score<<"\n";
+
+
     
     
     //---------------New Feature-----------------------
@@ -43,15 +60,15 @@ int main(int argc, char** argv)
     //graph->lay_uti(Lay); // get Layer's utiltization
     //---------------設定Net繞線的layer------------------
     
-    auto &net1 = graph->getNet(1);
-    auto pins = twoPinsGen(net1,3);//這樣就會強制設定他產生在layer3的 two-pin-net  ("允許往下",但初始是在layer3,更有機會在高層完成繞線)
-    auto result = Reroute(graph,1,pins);
-    printTree(graph,&net1,result.first.nettree);
+    // auto &net1 = graph->getNet(1);
+    // auto pins = twoPinsGen(net1,3);//這樣就會強制設定他產生在layer3的 two-pin-net  ("允許往下",但初始是在layer3,更有機會在高層完成繞線)
+    // auto result = Reroute(graph,1,pins);
+    // printTree(graph,&net1,result.first.nettree);
 
     //,可以透過觀察各層的使用率graph->lay_uti(Lay); 以及 HPWL(Net*net);來配合設定哪條net要從高層開始twoPinsGen
 
 
-    //OnlyRouting(graph,fileName,{});
+    OnlyRouting(graph,fileName,{});
    
     
 

@@ -200,8 +200,8 @@ void backTrackPrint(Graph*graph,Net*net,node*v,std::vector<std::string>*segment)
     {
         auto &g = (*graph)(v->p.row,v->p.col,v->p.lay);
 
-        std::string posv = pos2str(v->p);
-        std::string posu = pos2str(v->parent->p);
+        std::string &posv = pos2str(v->p);
+        std::string &posu = pos2str(v->parent->p);
         if(segment){segment->push_back(posu+" "+posv+" "+net->netName);}
         else{std::cout<<(posu+" "+posv+" "+net->netName)<<"\n";}
         v = v->parent;
@@ -289,7 +289,7 @@ node* Search(Graph*graph,NetGrids*net,node *v,const pos&delta,std::unordered_map
 
 
     //Caculate Cost    
-    std::string str = pos2str(P);
+    std::string &str = pos2str(P);
     float lastCost = (gridCost.find(str)==gridCost.end())? FLT_MAX:gridCost[str];
     float pf = graph->getLay(P.lay).powerFactor;
     float weight = graph->getNet(net->NetId).weight;
@@ -423,7 +423,7 @@ std::priority_queue<node*,std::vector<node*>,minCost>&Q,std::unordered_map<std::
 
 bool isTarget(node *v,std::unordered_map<std::string,node*>&target)
 {
-    std::string str = pos2str(v->p);
+    std::string &str = pos2str(v->p);
     if(target.find(str)!=target.end())//find
     {
         node* n = target.at(str);
@@ -499,7 +499,11 @@ tree* Tree2Tree(Graph*graph,NetGrids*net,tree*t1,tree*t2)
     }
 }
 
-
+#include <chrono>
+extern std::chrono::duration<double, std::milli> c1;
+extern std::chrono::duration<double, std::milli> c2;
+extern std::chrono::duration<double, std::milli> c3;
+extern std::chrono::duration<double, std::milli> c4;
 
 node* search2(Graph*graph,NetGrids*net,node *v,const pos&delta,tree*tmp,std::unordered_map<std::string,bool>&mark,BoundingBox &Bx)
 {
@@ -507,7 +511,7 @@ node* search2(Graph*graph,NetGrids*net,node *v,const pos&delta,tree*tmp,std::uno
     // std::cout<<"step6\n";
     pos P = {v->p.row+delta.row,v->p.col+delta.col,v->p.lay+delta.lay};
     Ggrid& g = (*graph)(P.row,P.col,P.lay);
-    std::string str = pos2str(P);
+    std::string &str = pos2str(P);
     if(mark.find(str)!=mark.end())return nullptr; //mark
     mark[str] = true;
 
@@ -592,9 +596,9 @@ std::pair<ReroutInfo,bool> Reroute(Graph*graph,int NetId,TwoPinNets&twopins)
     {   
         if(initdemand!=-1)
         {
-            // T = MazeRouting(graph,netgrids,pins.first,pins.second);
+            T = MazeRouting(graph,netgrids,pins.first,pins.second);
             // if(!T)
-            T = Tree2Tree(graph,netgrids,pins.first->routing_tree,pins.second->routing_tree);
+            // T = Tree2Tree(graph,netgrids,pins.first->routing_tree,pins.second->routing_tree);
         }
         if(!T) //把整個two-pin nets 繞線產生出來的tree全部collect成一棵回傳
         {

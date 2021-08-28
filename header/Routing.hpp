@@ -31,10 +31,34 @@ inline std::ostream& operator<<(std::ostream&os,pos&p)
     os<<p.row<<" "<<p.col<<" "<<p.lay;
     return os;
 }
-inline std::string pos2str(const pos &p)
+
+struct table{
+
+    void init(Graph*graph)
+    {
+        mr = graph->RowBound().first;
+        Mr = graph->RowBound().second;
+        mc = graph->ColBound().first;
+        Mc = graph->ColBound().second;
+        strTable = new std::vector<std::string>(graph->LayerNum()*(Mr-mr+1)*(Mc-mc+1));
+        for(int l =1;l<=graph->LayerNum();l++)
+            for(int r = mr;r<=Mr;r++)
+                for(int c = mc;c<=Mc;c++)
+                    strTable->at( (l-1)*(Mr-mr+1)*(Mc-mc+1) + (r-mr)*(Mc-mc+1) + c-mc ) = std::to_string(r) + " "+std::to_string(c)+" "+std::to_string(l);
+    }
+
+    std::vector<std::string> *strTable = nullptr;
+    int mr,Mr,mc,Mc;
+    std::string& get(int r,int c,int l)
+    {
+        return strTable->at( (l-1)*(Mr-mr+1)*(Mc-mc+1) + (r-mr)*(Mc-mc+1) + c-mc );
+    }
+};
+extern table strtable;
+inline std::string& pos2str(const pos &p)
 {
-    std::string str = std::to_string(p.row)+" "+std::to_string(p.col)+" "+std::to_string(p.lay);
-    return str;
+    // std::string str = std::to_string(p.row)+" "+std::to_string(p.col)+" "+std::to_string(p.lay);
+    return strtable.get(p.row,p.col,p.lay);
 }
 //----------------------------------------------pos related----------------------------------------------------
 
