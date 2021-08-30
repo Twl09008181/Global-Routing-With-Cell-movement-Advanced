@@ -13,6 +13,8 @@ void Init( std::string path,std::string fileName){graph = new Graph(path+fileNam
 void OnlyRouting(Graph*graph,std::string fileName,const std::vector<std::string> &cellinfo);
 void OutPut(Graph*graph,std::string fileName,const std::vector<std::string>&MovingCell);
 // void RoutingWithCellMOV(Graph*graph,std::string fileName,std::vector<std::string>&MovingCell,bool Ripall=false);
+bool RoutingSchedule(Graph*graph,int netid,std::vector<ReroutInfo>&infos,std::vector<int>&RipId,int defaultLayer=0,ReroutInfo**overflowNet=nullptr);
+void routing(Graph*graph,int batchsize);
 
 
 #include <chrono>
@@ -23,7 +25,7 @@ std::chrono::duration<double, std::milli> pinsTime;
 
 
 table strtable;
-
+float origin;
 int main(int argc, char** argv)
 {
     auto t1 = std::chrono::high_resolution_clock::now();
@@ -37,9 +39,8 @@ int main(int argc, char** argv)
     std::string fileName = argv[1];
 
     Init(path,fileName);    
-    
-    
     strtable.init(graph);
+    origin = graph->score;
     auto t2 = std::chrono::high_resolution_clock::now();
     IN = t2-t1;
 
@@ -53,7 +54,11 @@ int main(int argc, char** argv)
  
 
 
-    OnlyRouting(graph,fileName,{});
+    // OnlyRouting(graph,fileName,{});
+    int batchsize;
+    std::cout<<"enter bs\n";
+    std::cin>>batchsize;
+    routing(graph,batchsize);
 
 
 
@@ -62,6 +67,7 @@ int main(int argc, char** argv)
     std::cout<<"total : "<<t3.count()/1000<<" s \n";
     std::cout<<"Routing time:"<<RoutingTime.count()/1000<<"s\n";
     std::cout<<"pins time:"<<pinsTime.count()/1000<<"s\n";
+    std::cout<<"final score:"<<origin-graph->score<<"\n";
     OutPut(graph,fileName,{});
     delete graph;
 	return 0;
@@ -393,4 +399,142 @@ void OutPut(Graph*graph,std::string fileName,const std::vector<std::string>&Movi
     std::cout<<"saving done!\n";
 
     os.close();
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+//Generic Routing Schedule
+//if routing success, add demand and save to infos&RipId. Caller must call Accept or Rejcet itself.
+//if routing failed , recover oldnet. 
+bool RoutingSchedule(Graph*graph,int netid,std::vector<ReroutInfo>&infos,std::vector<int>&RipId,int defaultLayer,ReroutInfo**overflowNet)
+{
+
+    bool routingsuccess = true;
+    //-------------------------------------Mode------------------------------------
+    bool overflowmode = (overflowNet==nullptr)? false:true;
+    //-------------------------------------RipUP----------------------------------
+    auto oldnet = graph->getNetGrids(netid);
+    RipUpNet(graph,oldnet);
+    //-------------------------------------Routing---------------------------------
+    TwoPinNets twopins = twoPinsGen(graph->getNet(netid),defaultLayer);
+    std::pair<ReroutInfo,bool> result = Reroute(graph,netid,twopins,overflowmode);
+
+    //-------------------------------------Adding or Recover---------------------------------
+
+    if(result.first.netgrids->isOverflow())//overflow happend
+    {
+        **overflowNet = std::move(result.first);
+        routingsuccess = false;
+        std::cout<<"overflow\n";
+    }
+    else{ //not overflow
+        if(result.second) //success
+        {   
+            AddingNet(graph,result.first.netgrids);
+            infos.push_back(result.first);
+            RipId.push_back(netid);
+        }
+        else{//failed
+            AddingNet(graph,oldnet);
+            delete result.first.netgrids;
+            delete result.first.nettree;
+            routingsuccess = false;
+        }
+    }
+    return routingsuccess;
+}
+
+
+
+
+void routing(Graph*graph,int batchsize)
+{
+    
+    
+    std::vector<netinfo> netlist = getNetlist(graph);//get netList
+
+    //做一次batch再決定要不要接受,可以比較有彈性(不然一次就決定往往卡到local)
+    for(int i = 0;i<netlist.size();i+=batchsize)
+    {
+        float sc = graph->score;
+        //----------------------------one batch--------------------------------------
+        int s = i;
+        int e = min((i+batchsize),netlist.size());
+        std::vector<ReroutInfo>infos;infos.reserve(batchsize);
+        std::vector<int>RipId;RipId.reserve(batchsize);
+        for(int j = s;j<e;j++)
+        {
+            RoutingSchedule(graph,netlist.at(j).netId,infos,RipId);
+        }
+
+        if(graph->score <= sc)
+        {
+            Accept(graph,infos);
+        }
+        else{
+            Reject(graph,infos,RipId);
+        }
+        //----------------------------one batch--------------------------------------
+    }
+    // OutPut(graph,fileName,cellinfo);
 }

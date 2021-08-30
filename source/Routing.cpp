@@ -156,6 +156,10 @@ float AddingNet(Graph*graph,NetGrids*net)
                 sc+=pf*weight;
                 graph->lay_uti(grid->lay).first+=1;
             }
+            else{
+                std::cerr<<"eror\n";
+                std::cout<<grid->get_remaining()<<"\n";
+            }
         }
     }
     net->passScore+=sc;
@@ -617,9 +621,9 @@ std::pair<ReroutInfo,bool> Reroute(Graph*graph,int NetId,TwoPinNets&twopins,bool
     {   
         if(initdemand!=-1)
         {
-            T = MazeRouting(graph,netgrids,pins.first,pins.second);
+            // T = MazeRouting(graph,netgrids,pins.first,pins.second);
             // if(!T)
-            // T = Tree2Tree(graph,netgrids,pins.first->routing_tree,pins.second->routing_tree);
+            T = Tree2Tree(graph,netgrids,pins.first->routing_tree,pins.second->routing_tree);
         }
         if(!T) //把整個two-pin nets 繞線產生出來的tree全部collect成一棵回傳
         {
