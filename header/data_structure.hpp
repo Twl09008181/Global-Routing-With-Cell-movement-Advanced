@@ -71,29 +71,29 @@ struct CellInst{
 
 struct Ggrid{
     Ggrid(int c) : capacity(c), demand(0) {}
-    int get_remaining(void)const {return capacity - demand;}
-    float congestion_rate()const{
-        if(capacity==0)return 1; //以免 / 0 error.
-        return (float)demand/capacity;
+    
+    bool is_overflow()const{return capacity < demand;}
+    int get_remaining(void)const //sometimes , overflow is allowed.
+    {
+        if(is_overflow()){return 0;}
+        return capacity - demand;
     }
-    void add_demand(int dmd=1){demand+=dmd; if(demand>capacity){std::cerr<<row<<","<<col<<","<<lay<<" overflow!!\n";exit(1);}}
-    void delete_demand(int dmd = 1){
-        using std::max;
-        if(demand<dmd)
-        {
-            std::cout<<"delete_demand error!!\n";
-            std::cout<<row<<" "<<col<<" "<<lay<<"\n";
-            exit(1);
-        }
+    void add_demand(int dmd=1,int netid = 0,bool nocheck = false){
+        demand+=dmd; 
+        if(demand > capacity&&!nocheck){std::cerr<<row<<","<<col<<","<<lay<<" overflow!!\n";exit(1);}
+        if(netid)Netids.insert(netid);
+    }
+    void delete_demand(int dmd = 1,int netid=0){
+        if(demand < dmd){std::cout<<"delete_demand error!! "<<row<<" "<<col<<" "<<lay<<"\n";exit(1);}
+        demand-=dmd;
+        if(netid)Netids.erase(netid);
+    }
 
-        demand = max(demand-dmd,0);
-    }
 //----------------------------------Data Member----------------------------------------------
     int row,col,lay;
     int capacity;
-// private:  
     int demand;
-    
+    std::set<int>Netids;//record the nets passing this grid.
 };
 
 struct Net{

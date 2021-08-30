@@ -129,8 +129,9 @@ struct tree{
 
 struct NetGrids
 {
-    NetGrids(int netId)
-    :NetId{netId}{}
+    NetGrids(int netId,bool overflowAllow=false)
+    :NetId{netId},overflow_mode{overflowAllow}
+    {}
 
     bool AlreadyPass(Ggrid*grid)
     {
@@ -145,14 +146,25 @@ struct NetGrids
         auto &grid = (*graph)(n->p.row,n->p.col,n->p.lay);
         PassGrid(&grid);
     }
+    int wl()const{return grids.size();}
+    //overflow flag
+    void ResetFlag()
+    {
+        overflow_mode = false;
+        is_overflow = false;
+        recover_mode = false;
+    }
+    bool isOverflow()const{return is_overflow;}
+
     std::unordered_map<Ggrid*,bool>grids;
     int NetId;
     float passScore = 0;
 
-    int wl()
-    {
-        return grids.size();
-    }
+
+    
+    bool overflow_mode = false;
+    bool is_overflow = false;
+    bool recover_mode = false;
     
 };
 

@@ -116,15 +116,15 @@ float RipUpNet(Graph*graph,NetGrids*net)
   
     float sc = 0;
      
-    float pf = graph->getNet(net->NetId).weight;
+    float weight = graph->getNet(net->NetId).weight;
     for(auto &g:net->grids)
     {
         Ggrid* grid = g.first;
         bool alreadyAdd = g.second;
         if(alreadyAdd)
         {
-            float weight = graph->getLay(grid->lay).powerFactor;
-            grid->delete_demand();
+            float pf = graph->getLay(grid->lay).powerFactor;
+            grid->delete_demand(1,net->NetId);
             g.second = false;
             sc+=pf*weight;
             graph->lay_uti(grid->lay).first-=1;
@@ -141,17 +141,18 @@ float AddingNet(Graph*graph,NetGrids*net)
 
     float sc = 0;
     
-    float pf = graph->getNet(net->NetId).weight;
+    float weight = graph->getNet(net->NetId).weight;
     for(auto &g:net->grids)
     {
         Ggrid* grid = g.first;
         bool alreadyAdd = g.second;
         if(!alreadyAdd)
         {
-            if(grid->get_remaining())
+            bool ignoreCheck = net->overflow_mode || net->recover_mode;
+            if(grid->get_remaining()||ignoreCheck)
             {
-                float weight = graph->getLay(grid->lay).powerFactor;
-                grid->add_demand();//need
+                float pf = graph->getLay(grid->lay).powerFactor;
+                grid->add_demand(1,net->NetId,ignoreCheck);//need
                 g.second = true;
                 sc+=pf*weight;
                 graph->lay_uti(grid->lay).first+=1;
@@ -160,7 +161,7 @@ float AddingNet(Graph*graph,NetGrids*net)
     }
     net->passScore+=sc;
     graph->score+=sc;
-
+    net->ResetFlag();
     return sc;
 }
 
