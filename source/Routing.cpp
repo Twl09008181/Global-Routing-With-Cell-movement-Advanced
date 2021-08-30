@@ -325,6 +325,12 @@ node* Search(Graph*graph,NetGrids*net,node *v,const pos&delta,std::unordered_map
     node * n = new node(P);
     n->cost = (net->AlreadyPass(&g))? 0:weight*pf+v->cost;////need
 
+    if(!g.get_remaining())
+    {
+        n->cost += g.demand/g.capacity;
+    }
+    
+
     if(n->cost<lastCost)
     {
         tmp->addNode(n);

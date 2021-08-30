@@ -10,12 +10,20 @@ Graph* graph = nullptr;
 
 
 void Init( std::string path,std::string fileName){graph = new Graph(path+fileName);}
-void OnlyRouting(Graph*graph,std::string fileName,const std::vector<std::string> &cellinfo);
+// void OnlyRouting(Graph*graph,std::string fileName,const std::vector<std::string> &cellinfo);
 void OutPut(Graph*graph,std::string fileName,const std::vector<std::string>&MovingCell);
 // void RoutingWithCellMOV(Graph*graph,std::string fileName,std::vector<std::string>&MovingCell,bool Ripall=false);
 bool RoutingSchedule(Graph*graph,int netid,std::vector<ReroutInfo>&infos,std::vector<int>&RipId,int defaultLayer=0,ReroutInfo**overflowNet=nullptr);
-void routing(Graph*graph,int batchsize);
+struct netinfo{
+    int netId;
+    int hpwl;
+    int wl;
+};
+std::vector<netinfo> getNetlist(Graph*graph);//sort by  wl - hpwl
+float routing(Graph*graph,int batchsize);
 
+
+void OnlyRouting(Graph*graph,bool overflow = false,float topPercent = 0);
 
 #include <chrono>
 std::chrono::duration<double, std::milli> IN;
@@ -26,6 +34,8 @@ std::chrono::duration<double, std::milli> pinsTime;
 
 table strtable;
 float origin;
+
+
 int main(int argc, char** argv)
 {
     auto t1 = std::chrono::high_resolution_clock::now();
@@ -44,7 +54,6 @@ int main(int argc, char** argv)
     auto t2 = std::chrono::high_resolution_clock::now();
     IN = t2-t1;
 
-
     std::cout<<"graph Init done!\n";
     std::cout<<"Init score : "<<graph->score<<"\n";
     std::cout<<"init time :"<<(IN).count()/1000<<"s \n";
@@ -54,21 +63,27 @@ int main(int argc, char** argv)
  
 
 
-    // OnlyRouting(graph,fileName,{});
-    int batchsize;
-    std::cout<<"enter bs\n";
-    std::cin>>batchsize;
-    routing(graph,batchsize);
+    //--------------------------------------testing------------------------------------------
+    //batch size + step = new batch size
+    //if this run , score is less than last run , moving opposite direction
 
+    OnlyRouting(graph,true,0.01);
+    // OnlyRouting(graph,false);
 
+    // OnlyRouting(graph,true,0.01);
+    // routing(graph,1);
+    //--------------------------------------testing------------------------------------------
+
+    std::cout<<"Routing complete !\n";
+    std::cout<<"final score:"<<origin-graph->score<<"\n";
+    OutPut(graph,fileName,{});
 
     t2 = std::chrono::high_resolution_clock::now();
     std::chrono::duration<double, std::milli> t3(t2-t1);
     std::cout<<"total : "<<t3.count()/1000<<" s \n";
-    std::cout<<"Routing time:"<<RoutingTime.count()/1000<<"s\n";
-    std::cout<<"pins time:"<<pinsTime.count()/1000<<"s\n";
-    std::cout<<"final score:"<<origin-graph->score<<"\n";
-    OutPut(graph,fileName,{});
+    // std::cout<<"Routing time:"<<RoutingTime.count()/1000<<"s\n";
+    // std::cout<<"pins time:"<<pinsTime.count()/1000<<"s\n";
+    // std::cout<<"final score:"<<origin-graph->score<<"\n";
     delete graph;
 	return 0;
 }
@@ -92,6 +107,8 @@ void Reject(Graph*graph,std::vector<ReroutInfo>&info,std::vector<int>&AlreadyRip
     {
         AddingNet(graph,graph->getNetGrids(netId));
     }
+    info.clear();
+    AlreadyRipUp.clear();
 }
 
 void Accept(Graph*graph,std::vector<ReroutInfo>&info)
@@ -102,14 +119,11 @@ void Accept(Graph*graph,std::vector<ReroutInfo>&info)
         graph->updateNetGrids(netId,reroute.netgrids);
         graph->updateTree(netId,reroute.nettree);
     }
+    info.clear();
 }
 
 
-struct netinfo{
-    int netId;
-    int hpwl;
-    int wl;
-};
+
 std::vector<netinfo> getNetlist(Graph*graph)//sort by  wl - hpwl
 {
     std::vector<netinfo>nets;nets.resize(graph->Nets.size());
@@ -127,6 +141,12 @@ std::vector<netinfo> getNetlist(Graph*graph)//sort by  wl - hpwl
         return n1.wl-n1.hpwl > n2.wl-n2.hpwl;//Bug Fixed , update n2.hpwl
     };
     std::sort(nets.begin(),nets.end(),cmp);
+
+    // for(auto n:nets)
+    // {
+    //     std::cout<<n.hpwl<<" "<<n.wl<<" "<<n.wl-n.hpwl<<"\n";
+    // }
+
     return nets;
 }
 
@@ -375,7 +395,7 @@ void OutPut(Graph*graph,std::string fileName,const std::vector<std::string>&Movi
 {
 
     std::vector<std::string>segments;
-    std::cout<<"Routing complete !\n";
+
     PrintAll(graph,&segments);
     //寫成輸出檔案
     int NumRoutes = segments.size();
@@ -481,11 +501,11 @@ bool RoutingSchedule(Graph*graph,int netid,std::vector<ReroutInfo>&infos,std::ve
 
     //-------------------------------------Adding or Recover---------------------------------
 
-    if(result.first.netgrids->isOverflow())//overflow happend
+    if(result.first.netgrids->isOverflow())//failed: overflow happend
     {
+        AddingNet(graph,oldnet);
         **overflowNet = std::move(result.first);
         routingsuccess = false;
-        std::cout<<"overflow\n";
     }
     else{ //not overflow
         if(result.second) //success
@@ -494,8 +514,8 @@ bool RoutingSchedule(Graph*graph,int netid,std::vector<ReroutInfo>&infos,std::ve
             infos.push_back(result.first);
             RipId.push_back(netid);
         }
-        else{//failed
-            AddingNet(graph,oldnet);
+        else{//failed : not overflow mode
+            AddingNet(graph,oldnet);//recover oldnet demand
             delete result.first.netgrids;
             delete result.first.nettree;
             routingsuccess = false;
@@ -507,34 +527,128 @@ bool RoutingSchedule(Graph*graph,int netid,std::vector<ReroutInfo>&infos,std::ve
 
 
 
-void routing(Graph*graph,int batchsize)
+//a simple example of routing 
+float routing(Graph*graph,int batchsize)
 {
-    
-    
     std::vector<netinfo> netlist = getNetlist(graph);//get netList
+    //做一次batch再決定要不要接受,可以比較有彈性(不然一次就決定可能卡到local)
 
-    //做一次batch再決定要不要接受,可以比較有彈性(不然一次就決定往往卡到local)
+    int totalBatch = 0;
+    int successnet = 0;
+    int accepttime = 0;//讓他越高越好
+
     for(int i = 0;i<netlist.size();i+=batchsize)
     {
         float sc = graph->score;
+        totalBatch++;
         //----------------------------one batch--------------------------------------
         int s = i;
         int e = min((i+batchsize),netlist.size());
         std::vector<ReroutInfo>infos;infos.reserve(batchsize);
         std::vector<int>RipId;RipId.reserve(batchsize);
-        for(int j = s;j<e;j++)
-        {
-            RoutingSchedule(graph,netlist.at(j).netId,infos,RipId);
+        for(int j = s;j<e;j++){
+            if(RoutingSchedule(graph,netlist.at(j).netId,infos,RipId))
+                successnet++;
         }
-
-        if(graph->score <= sc)
-        {
+        if(graph->score <= sc){
             Accept(graph,infos);
+            accepttime++;
+            sc = graph->score;
         }
-        else{
+        else
             Reject(graph,infos,RipId);
-        }
         //----------------------------one batch--------------------------------------
     }
-    // OutPut(graph,fileName,cellinfo);
+
+    std::cout<<"Batch accept rate : "<<float(accepttime)/totalBatch<<"  net success rate:"<<float(successnet)/graph->Nets.size()<<"  ";
+    std::cout<<"score:"<<origin-graph->score<<"\n";
+    return origin-graph->score;
+}
+
+bool OverflowProcess(Graph*graph,NetGrids*overflownet)
+{
+    return false;//test 
+}
+
+//一次拆一條
+bool overFlowRouting(Graph*graph,int Netid,std::vector<ReroutInfo>&infos,std::vector<int>&RipId)
+{
+    ReroutInfo* overflowNet = new ReroutInfo;
+    float sc = graph->score;
+    bool success = true;
+    if(!RoutingSchedule(graph,Netid,infos,RipId,0,&overflowNet))//overflow
+    {
+        auto oldnet = graph->getNetGrids(Netid);
+        RipUpNet(graph,oldnet);
+        AddingNet(graph,overflowNet->netgrids);//force add
+
+        // std::cout<<Netid<<"enter overflow process\n";
+        if(!OverflowProcess(graph,overflowNet->netgrids))//failed
+        {
+            RipUpNet(graph,overflowNet->netgrids);
+            AddingNet(graph,graph->getNetGrids(Netid));
+            delete overflowNet->netgrids;
+            delete overflowNet->nettree;
+            success = false;
+        }else{//if success 
+            infos.push_back(*overflowNet);
+            RipId.push_back(Netid);
+            std::cerr<<"error!\n";
+        } 
+    }
+    else{
+        if(graph->getNetGrids(Netid)->isOverflow())
+        {
+            std::cerr<<"error overflow !\n";
+        }
+    }
+    return success;
+}
+
+
+float topPercent = 0.001;
+
+//先做一個topPercent的版本
+void OnlyRouting(Graph*graph,bool overflow,float topPercent)
+{
+    float sc = graph->score;
+    std::vector<netinfo> netlist = getNetlist(graph);//get netList
+
+    std::vector<ReroutInfo>infos;std::vector<int>RipId;
+    int idx = 0;
+    //-----------------overflow allowed----------------------------
+
+    if(overflow){
+        for(;idx < netlist.size()*topPercent; idx++)
+        {
+            overFlowRouting(graph,netlist.at(idx).netId,infos,RipId);
+        }
+        if(graph->score < sc)
+        {
+            Accept(graph,infos);
+            sc = graph->score;
+        }else{
+            Reject(graph,infos,RipId);
+        }
+    }
+
+
+
+    //------------------------------------------------------------
+    idx = 0;
+    int batchsize = 1;
+    for(;idx<netlist.size();idx+=batchsize)
+    {
+        int s = idx;
+        int e = min((idx+batchsize),netlist.size());
+
+        for(int j = s;j<e;j++)
+            RoutingSchedule(graph,netlist.at(j).netId,infos,RipId);
+
+        if(graph->score <= sc){
+                Accept(graph,infos);
+                sc = graph->score;
+        }else
+            Reject(graph,infos,RipId);
+    }
 }

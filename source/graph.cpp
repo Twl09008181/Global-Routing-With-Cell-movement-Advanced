@@ -15,25 +15,25 @@ void DfsDestruct(node *v)
 
 Graph::~Graph(){
 
-    std::cout<<"graph desturctor~\n";
+    // std::cout<<"graph desturctor~\n";
 
 
-    std::cout<<"delete mCell~\n";
+    // std::cout<<"delete mCell~\n";
     for(auto mc:mCell)
     {
         delete mc.second;
     }
-    std::cout<<"delete CellInsts~\n";
+    // std::cout<<"delete CellInsts~\n";
     for(auto C:CellInsts)
     {
         delete C.second;
     }
-    std::cout<<"delete Nets~\n";
+    // std::cout<<"delete Nets~\n";
     for(auto N:Nets)
     {
         delete N.second;
     }
-    std::cout<<"delete routingTree~\n";
+    // std::cout<<"delete routingTree~\n";
     for(auto t:routingTree)
     {
         delete t;
