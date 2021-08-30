@@ -49,10 +49,6 @@ int main(int argc, char** argv)
     std::cout<<"init time :"<<(IN).count()/1000<<"s \n";
 
 
-    
- 
-
-
 
     OnlyRouting(graph,1,true,0.9);
 
@@ -122,5 +118,5 @@ void OnlyRouting(Graph*graph,int batchSize,bool overflow,float topPercent)
         routing(graph,netlist,0,netlist.size()*topPercent,overFlowRouting,batchSize);
     }
     //------------------------------------------------------------
-    routing(graph,netlist,0,netlist.size(),overFlowRouting,batchSize);
+    routing(graph,netlist,0,netlist.size(),RoutingSchedule,batchSize);
 }
