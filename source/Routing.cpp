@@ -241,20 +241,30 @@ void PrintAll(Graph*graph,std::vector<std::string>*segment)
 tree* getPath(Graph*graph,NetGrids*net,node*v,std::unordered_map<node*,bool>&t1Point)
 {
 
-    net->PassGrid(graph,v);
+    auto Adding = [&graph](tree*path,NetGrids*net,node*n)
+    {
+        auto &g = (*graph)(n->p.row,n->p.col,n->p.lay);
+        bool enough = (net->AlreadyPass(&g))? true : g.get_remaining(); 
+        if(!enough){
+            if(net->overflow_mode){net->overflow();}
+            else{std::cerr<<"getPath error, overflow happend\n";exit(1);}
+        }
+        path->addNode(n);
+        net->PassGrid(graph,n);
+    };
+    
     tree* path = new tree;
-    node* last = new node(v->p);
-    path->addNode(last);
+    node* last = new node(v->p);//new a node (different memory from tmp in T2T or maze.)
+    // Adding.............  
+    Adding(path,net,last);
     v = v->parent;
     while(v)
     {
         node* n = new node(v->p);
-        path->addNode(n);
+        Adding(path,net,n);
         last->connect(n);
         last = n;
-        net->PassGrid(graph,n);
         if(t1Point.find(v)!=t1Point.end())break;
-        
         v = v->parent;
     }
     return path;
@@ -278,8 +288,12 @@ bool BoundaryCheck(Graph*graph,NetGrids*net,node *v,const pos&delta,BoundingBox 
 
 bool CapacityCheck(NetGrids*net,Ggrid&g)
 {
-    bool enough = (net->AlreadyPass(&g))? true : g.get_remaining(); ////need change  first come,first serve
-    if(!enough)return false;
+    bool enough = (net->AlreadyPass(&g))? true : g.get_remaining(); 
+    
+    if(!enough&&!net->overflow_mode){//new feature: overflow_mode can bypass this check.
+        return false;
+    }
+
     return true;
 }
 
@@ -590,10 +604,10 @@ tree* MazeRouting(Graph*graph,NetGrids*net,node*n1,node*n2)
 
 
 
-std::pair<ReroutInfo,bool> Reroute(Graph*graph,int NetId,TwoPinNets&twopins)
+std::pair<ReroutInfo,bool> Reroute(Graph*graph,int NetId,TwoPinNets&twopins,bool overflowMode)
 {
     //std::cout<<"init"<<"\n";
-    NetGrids * netgrids = new NetGrids(NetId);
+    NetGrids * netgrids = new NetGrids(NetId,overflowMode);
     int initdemand = TwoPinNetsInit(graph,netgrids,twopins);//Init
     //std::cout<<"ImitDmd =  "<<initdemand<<"\n";
 

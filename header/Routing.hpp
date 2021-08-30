@@ -154,7 +154,7 @@ struct NetGrids
         recover_mode = false;
     }
     bool isOverflow()const{return is_overflow;}
-
+    void overflow(){is_overflow = true;}
     std::unordered_map<Ggrid*,bool>grids;
     int NetId;
     float passScore = 0;
@@ -210,7 +210,7 @@ struct ReroutInfo{
     NetGrids* netgrids;
 };
 
-std::pair<ReroutInfo,bool> Reroute(Graph*graph,int NetId,TwoPinNets&twopins);
+std::pair<ReroutInfo,bool> Reroute(Graph*graph,int NetId,TwoPinNets&twopins,bool overflowMode=false);
 
 
 
