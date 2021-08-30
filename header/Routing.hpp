@@ -76,7 +76,6 @@ struct node{
     pos p;
     tree * routing_tree;
     node* parent;
-    std::set<node*>child;
     float cost = FLT_MAX;
     bool IsIntree = false;//backtrack need
 

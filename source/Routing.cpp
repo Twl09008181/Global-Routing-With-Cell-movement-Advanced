@@ -9,7 +9,6 @@ void node::connect(node *host)
 {
     if(this->parent!=host&&this!=host)
     {   
-        child.insert(host);
         host->parent = this;
         this->routing_tree->leaf.erase(this);
     }
