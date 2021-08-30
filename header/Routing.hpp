@@ -159,8 +159,12 @@ struct NetGrids
     int NetId;
     float passScore = 0;
 
-
+    //fixed flag , avoid duplicate routing without Accept/Reject
+    void set_fixed(bool fixed){is_fixed = fixed;}
+    bool isFixed(){return is_fixed;}
+    bool is_fixed = false;
     
+
     bool overflow_mode = false;
     bool is_overflow = false;
     bool recover_mode = false;
