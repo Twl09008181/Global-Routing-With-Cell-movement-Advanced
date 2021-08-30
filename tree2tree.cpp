@@ -130,6 +130,9 @@ std::vector<netinfo> getNetlist(Graph*graph)//sort by  wl - hpwl
 
 
 
+
+
+
 void OnlyRouting(Graph*graph,std::string fileName,const std::vector<std::string> &cellinfo)
 {
     

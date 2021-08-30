@@ -190,7 +190,7 @@ void printTree(Graph*graph,Net*net,tree*t,std::vector<std::string>*segment=nullp
 void PrintAll(Graph*graph,std::vector<std::string>*segment=nullptr);
 //two pin net (untested)
 int TwoPinNetsInit(Graph*graph,NetGrids*net,TwoPinNets&pinset);
-TwoPinNets twoPinsGen(Net&net,int defaultLayer=-1);
+TwoPinNets twoPinsGen(Net&net,int defaultLayer=0);//refactor , set defaultLayer = 0
 
 
 //Routing Interface

@@ -620,7 +620,7 @@ TwoPinNets twoPinsGen(Net&net,int defaultLayer)
 {
 
     int Lcstr = net.minLayer;
-    if(defaultLayer!=-1&&defaultLayer>=Lcstr)
+    if(defaultLayer!=0&&defaultLayer>=Lcstr)
     {
         net.minLayer = defaultLayer;
     }
