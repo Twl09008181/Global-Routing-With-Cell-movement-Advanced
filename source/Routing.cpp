@@ -110,12 +110,10 @@ void Backtack_Sgmt_Grid(Graph*graph,NetGrids*net,node*v,bool(*f)(Ggrid*,NetGrids
 }
 //------------------------------------------------Demand Interface------------------------------------------------------------------------
 
-extern std::chrono::duration<double, std::milli> AddingTime;
-extern std::chrono::duration<double, std::milli> RipUPTime;
 
 float RipUpNet(Graph*graph,NetGrids*net)
 {
-    auto t1 = std::chrono::high_resolution_clock::now();
+  
     float sc = 0;
      
     float pf = graph->getNet(net->NetId).weight;
@@ -134,14 +132,13 @@ float RipUpNet(Graph*graph,NetGrids*net)
     }
     net->passScore-=sc;
     graph->score-=sc;
-    auto t2 = std::chrono::high_resolution_clock::now();
-    RipUPTime+=t2-t1;
+
 
     return sc;
 }
 float AddingNet(Graph*graph,NetGrids*net)
 {
-    auto t1 = std::chrono::high_resolution_clock::now();
+
     float sc = 0;
     
     float pf = graph->getNet(net->NetId).weight;
@@ -163,8 +160,7 @@ float AddingNet(Graph*graph,NetGrids*net)
     }
     net->passScore+=sc;
     graph->score+=sc;
-    auto t2 = std::chrono::high_resolution_clock::now();
-    AddingTime+=t2-t1;
+
     return sc;
 }
 
@@ -515,40 +511,21 @@ tree* Tree2Tree(Graph*graph,NetGrids*net,tree*t1,tree*t2)
 }
 
 
-extern std::chrono::duration<double, std::milli> c1;
-extern std::chrono::duration<double, std::milli> c2;
-extern std::chrono::duration<double, std::milli> c3;
-extern std::chrono::duration<double, std::milli> c4;
 
 node* search2(Graph*graph,NetGrids*net,node *v,const pos&delta,tree*tmp,std::unordered_map<std::string,bool>&mark,BoundingBox &Bx)
 {
 
-    auto t1 = std::chrono::high_resolution_clock::now();
     if(!BoundaryCheck(graph,net,v,delta,Bx))return nullptr;
-    auto t2 = std::chrono::high_resolution_clock::now();
-
-    c1+=(t2-t1);
-
-
-    // std::cout<<"step6\n";
-    t1 = std::chrono::high_resolution_clock::now();
-
     pos P = {v->p.row+delta.row,v->p.col+delta.col,v->p.lay+delta.lay};
     Ggrid& g = (*graph)(P.row,P.col,P.lay);
     std::string &str = pos2str(P);
     if(mark.find(str)!=mark.end())return nullptr; //mark
     mark[str] = true;
-    t2 = std::chrono::high_resolution_clock::now();
-    c2+=(t2-t1);
-
-    t1 = std::chrono::high_resolution_clock::now();
     //Capacity checking
     if(!CapacityCheck(net,g))return nullptr;
     node * n = new node(P);
     tmp->addNode(n);
     v->connect(n);
-    t2 = std::chrono::high_resolution_clock::now();
-    c3+=(t2-t1);
     return n;
 }
 
@@ -577,7 +554,7 @@ tree* MazeRouting(Graph*graph,NetGrids*net,node*n1,node*n2)
     std::unordered_map<std::string,bool>mark;mark.insert({pos2str(n1Copy->p),true});
 
     // std::cout<<"step4\n";
-    auto t1 = std::chrono::high_resolution_clock::now();
+
     while(!Q.empty()&&!targetPoint)
     {
         node * v = Q.front();Q.pop();
@@ -595,9 +572,6 @@ tree* MazeRouting(Graph*graph,NetGrids*net,node*n1,node*n2)
         if(u = search2(graph,net,v,{1,0,0},tmp,mark,Bx))Q.push(u);//+row
         if(u = search2(graph,net,v,{-1,0,0},tmp,mark,Bx))Q.push(u);//-row
     }
-    auto t2 = std::chrono::high_resolution_clock::now();
-
-    c4+=(t2-t1);
 
     //std::cout<<"step5\n";
     if(targetPoint){

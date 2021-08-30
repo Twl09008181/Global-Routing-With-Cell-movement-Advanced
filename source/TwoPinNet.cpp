@@ -139,21 +139,14 @@ void treeInit(std::unordered_map<std::string,node*>&pins,std::unordered_map<std:
 }
 
 
-#include <chrono>
-
-extern std::chrono::duration<double, std::milli> flutetime;
-
 void get_two_pins(std::list<TwoPinNet>& two_pin_nets,Net&net)
 {
     
     int rowMax = graph->RowBound().second;
     int colMax = graph->ColBound().second;
     int LayMax = graph->LayerNum();
-    auto t1 = std::chrono::high_resolution_clock::now();
     // std::vector<int>tempDemand(rowMax*colMax*LayMax);// (r,c,l) : index = (l-1)*rowMax+(r-1)*colMax + c-1
     std::unordered_map<int,int>tempDemand;
-    auto t2 = std::chrono::high_resolution_clock::now();
-    flutetime+=t2-t1;
     int minLayer = net.minLayer;
 
     

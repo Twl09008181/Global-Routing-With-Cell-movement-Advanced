@@ -16,25 +16,11 @@ void OutPut(Graph*graph,std::string fileName,const std::vector<std::string>&Movi
 
 
 #include <chrono>
-std::chrono::duration<double, std::milli> c1;
-std::chrono::duration<double, std::milli> c2;
-std::chrono::duration<double, std::milli> c3;
-std::chrono::duration<double, std::milli> c4;
-
-
-//reject time
-std::chrono::duration<double, std::milli> AddingTime;
-std::chrono::duration<double, std::milli> RipUPTime;
 std::chrono::duration<double, std::milli> IN;
 std::chrono::duration<double, std::milli> RoutingTime;
-
-
-std::chrono::duration<double, std::milli> AcceptTime;
-std::chrono::duration<double, std::milli> RejectTime;
 std::chrono::duration<double, std::milli> pinsTime;
 
-std::chrono::duration<double, std::milli> flutetime;
-// std::vector<std::string> *strTable = nullptr;
+
 
 table strtable;
 
@@ -58,58 +44,24 @@ int main(int argc, char** argv)
     IN = t2-t1;
 
 
-
     std::cout<<"graph Init done!\n";
     std::cout<<"Init score : "<<graph->score<<"\n";
     std::cout<<"init time :"<<(IN).count()/1000<<"s \n";
 
 
     
-    
-    //---------------New Feature-----------------------
-    //HPWL_distribution(graph,fileName);
-    //utilization(graph,fileName);
-    
-
-    //HPWL(Net*net);  //net's HPWL
-    //graph->lay_uti(Lay); // get Layer's utiltization
-    //---------------設定Net繞線的layer------------------
-    
-    // auto &net1 = graph->getNet(1);
-    // auto pins = twoPinsGen(net1,3);//這樣就會強制設定他產生在layer3的 two-pin-net  ("允許往下",但初始是在layer3,更有機會在高層完成繞線)
-    // auto result = Reroute(graph,1,pins);
-    // printTree(graph,&net1,result.first.nettree);
-
-    //,可以透過觀察各層的使用率graph->lay_uti(Lay); 以及 HPWL(Net*net);來配合設定哪條net要從高層開始twoPinsGen
+ 
 
 
     OnlyRouting(graph,fileName,{});
 
-    // for(int i = 1;i<=graph->Nets.size();i++)
-    // {
-    //     TwoPinNets pins;
-    //     get_two_pins(pins,graph->getNet(i));
-    // }
-   
+
+
     t2 = std::chrono::high_resolution_clock::now();
-
-
-
     std::chrono::duration<double, std::milli> t3(t2-t1);
     std::cout<<"total : "<<t3.count()/1000<<" s \n";
-    
-    std::cout<<"search part1:"<<c1.count()/1000<<"s\n";
-    std::cout<<"search part1:"<<c2.count()/1000<<"s\n";
-    std::cout<<"search part1:"<<c3.count()/1000<<"s\n";
-    std::cout<<"search total:"<<c4.count()/1000<<"s\n";
-
     std::cout<<"Routing time:"<<RoutingTime.count()/1000<<"s\n";
-    std::cout<<"Adding time:"<<AddingTime.count()/1000<<"s\n";
-    std::cout<<"Ripup time:"<<RipUPTime.count()/1000<<"s\n";
-    std::cout<<"Acc time:"<<AcceptTime.count()/1000<<"s\n";
-    std::cout<<"RejectTime time:"<<RejectTime.count()/1000<<"s\n";
     std::cout<<"pins time:"<<pinsTime.count()/1000<<"s\n";
-    std::cout<<"flute time "<<flutetime.count()/1000<<"s\n";
     OutPut(graph,fileName,{});
     delete graph;
 	return 0;
@@ -123,8 +75,6 @@ int main(int argc, char** argv)
 //AlreadyRipUP: 已經被RipUp過的netId
 void Reject(Graph*graph,std::vector<ReroutInfo>&info,std::vector<int>&AlreadyRipUp)
 {
-    auto t1 = std::chrono::high_resolution_clock::now();
-    //Ripup routing result
     for(auto reroute:info)
     {
         RipUpNet(graph,reroute.netgrids);    //RipUP - Reroute result
@@ -136,22 +86,16 @@ void Reject(Graph*graph,std::vector<ReroutInfo>&info,std::vector<int>&AlreadyRip
     {
         AddingNet(graph,graph->getNetGrids(netId));
     }
-
-    auto t2 = std::chrono::high_resolution_clock::now();
-    RejectTime+=t2-t1;
 }
 
 void Accept(Graph*graph,std::vector<ReroutInfo>&info)
 {
-    auto t1 = std::chrono::high_resolution_clock::now();
     for(auto reroute:info)
     {
         int netId = reroute.netgrids->NetId;
         graph->updateNetGrids(netId,reroute.netgrids);
         graph->updateTree(netId,reroute.nettree);
     }
-    auto t2 = std::chrono::high_resolution_clock::now();
-    AcceptTime+=t2-t1;
 }
 
 
@@ -174,11 +118,16 @@ std::vector<netinfo> getNetlist(Graph*graph)//sort by  wl - hpwl
     }
     auto cmp = [](const netinfo&n1,const netinfo&n2)
     {
-        return n1.wl-n1.hpwl > n2.wl-n1.hpwl;
+        return n1.wl-n1.hpwl > n2.wl-n2.hpwl;//Bug Fixed , update n2.hpwl
     };
     std::sort(nets.begin(),nets.end(),cmp);
     return nets;
 }
+
+
+
+
+
 
 
 void OnlyRouting(Graph*graph,std::string fileName,const std::vector<std::string> &cellinfo)
