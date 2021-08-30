@@ -157,8 +157,7 @@ float AddingNet(Graph*graph,NetGrids*net)
                 graph->lay_uti(grid->lay).first+=1;
             }
             else{
-                std::cerr<<"eror\n";
-                std::cout<<grid->get_remaining()<<"\n";
+                std::cerr<<"AddingNet error net:"<<net->NetId<<"\n";
             }
         }
     }

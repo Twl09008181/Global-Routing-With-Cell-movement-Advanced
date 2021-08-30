@@ -60,6 +60,7 @@ public:
         if(NetId<1||NetId>Nets.size())
         {
             std::cout<<"Net& getNet(int NetId) input Error: 1<=NetId<="<<Nets.size()<<"\n";
+            std::cout<<"netID:"<<NetId<<"\n";
             exit(1);
         }
         std::string Key = "N" + std::to_string(NetId);
