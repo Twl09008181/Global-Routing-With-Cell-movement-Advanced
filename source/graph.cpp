@@ -356,6 +356,8 @@ std::pair<std::string,CellInst*> Graph::cellMoving(){
 				cell->row = cell->originalRow;
 				cell->col = cell->originalCol;
 			}else return {"C" + std::to_string(cellId),cell};
+
+
 		}
         insertCellsBlkg(cell);
 	}

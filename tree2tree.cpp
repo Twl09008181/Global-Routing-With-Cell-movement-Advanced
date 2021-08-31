@@ -14,7 +14,7 @@ void Init( std::string path,std::string fileName){graph = new Graph(path+fileNam
 void OutPut(Graph*graph,std::string fileName);
 void OnlyRouting(Graph*graph,int batchSize = 1,bool overflow = false,float topPercent = 0);
 void RoutingWithCellMoving(Graph*graph);
-
+void countdmd(Graph*graph);
 #include <chrono>
 std::chrono::duration<double, std::milli> IN;
 std::chrono::duration<double, std::milli> RoutingTime;
@@ -25,6 +25,7 @@ std::chrono::duration<double,std::milli>movtime;
 table strtable;
 float origin;
 
+int seed;//random seed
 
 int main(int argc, char** argv)
 {
@@ -37,10 +38,12 @@ int main(int argc, char** argv)
     }
     std::string path = "./benchmark/";
     std::string fileName = argv[1];
-
+    
     Init(path,fileName);    
     strtable.init(graph);
     origin = graph->score;
+    // std::cout<<"enter seed\n";
+    // std::cin>>seed;d
     // t2 = std::chrono::high_resolution_clock::now();
     // IN = t2-t1;
 
@@ -62,17 +65,22 @@ int main(int argc, char** argv)
     // std::cout<<"Routing time:"<<RoutingTime.count()/1000<<"s\n";
     // std::cout<<"pins time:"<<pinsTime.count()/1000<<"s\n";
     // std::cout<<"final score:"<<origin-graph->score<<"\n";
-
-    int num = 10;
+    countdmd(graph);
+    int num = 1;
     while(num--){
         RoutingWithCellMoving(graph);
-        OnlyRouting(graph);
+        // OnlyRouting(graph,1);
     }
+    countdmd(graph);
+
+    std::cout<<"seed:"<<seed<<"\n";
     std::cout<<"final score:"<<origin-graph->score<<"\n";
     t2 = std::chrono::high_resolution_clock::now();
     std::chrono::duration<double, std::milli> t3(t2-t1);
     std::cout<<"spend :"<<t3.count()/1000<<"\n";
     OutPut(graph,fileName);
+
+    utilization(graph,fileName);
     delete graph;
     
 
@@ -133,8 +141,19 @@ void OnlyRouting(Graph*graph,int batchSize,bool overflow,float topPercent)
     routing(graph,netlist,0,netlist.size(),RoutingSchedule,batchSize);
 }
 
+#include <stdio.h>
+#include <stdlib.h> 
+#include <time.h>
+bool randomaccept(float sc1,float sc2)
+{
+    seed = time(NULL);
+    srand(seed);
+    int r = rand()%10;
+    if(sc1<sc2)return true;
 
+    return r>8;
 
+}
 
 void movRouting(Graph*graph,std::vector<netinfo>&netlist,CellInst*movCell)
 {
@@ -151,7 +170,8 @@ void movRouting(Graph*graph,std::vector<netinfo>&netlist,CellInst*movCell)
 
     }
   
-    if(allSucces&&graph->score <= sc){
+    //if(allSucces&&randomaccept(graph->score,sc)){
+    if(false){
         Accept(graph,infos);
         movCell->originalRow = movCell->row;
         movCell->originalCol = movCell->col;
@@ -215,4 +235,26 @@ void RoutingWithCellMoving(Graph*graph)
     }
 
 
+}
+void countdmd(Graph*graph){
+    int LayerNum = graph->LayerNum();
+    std::pair<int,int>Row = graph->RowBound();
+    std::pair<int,int>Col = graph->ColBound();
+
+    int total_demand = 0;
+    for(int lay = 1;lay <= LayerNum;lay++)
+    {
+        
+        // std::cout<<"Layer : "<< lay <<"\n";
+        for(int row = Row.second;row >=Row.first ; row--)
+        {
+            for(int col = Col.first; col <= Col.second; col++)
+            {
+                // std::cout<<graph(row,col,lay).demand<<" ";
+                total_demand+=(*graph)(row,col,lay).demand;
+            }
+            // std::cout<<"\n";
+        }
+    }
+    std::cout<<"Total :"<<total_demand<<"\n";
 }
