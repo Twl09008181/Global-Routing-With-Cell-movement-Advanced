@@ -27,7 +27,10 @@ bool passing(Ggrid*grid,NetGrids*net)
     if(net->AlreadyPass(grid))
         return true;
     else{
-        if(grid->get_remaining()){
+        bool noCheck = net->overflow_mode||net->recover_mode;
+        if(grid->get_remaining()||noCheck){
+            if(net->overflow_mode)
+                net->overflow();
             net->PassGrid(grid);
             return true;
         }

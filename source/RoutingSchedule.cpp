@@ -50,6 +50,11 @@ bool RoutingSchedule(Graph*graph,int netid,std::vector<ReroutInfo>&infos,std::ve
             delete result.first.nettree;
             oldnet->set_fixed(false);
             routingsuccess = false;
+            if(overflowNet)
+            {
+                delete *overflowNet;
+                *overflowNet = nullptr;
+            }
         }
     }
     return routingsuccess;
@@ -171,7 +176,7 @@ bool overFlowRouting(Graph*graph,int Netid,std::vector<ReroutInfo>&infos,std::ve
         } 
     }
     else{//success
- 
+
         if(graph->getNetGrids(Netid)->isOverflow())
         {
             std::cerr<<"error overflow !\n";
