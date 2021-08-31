@@ -11,7 +11,7 @@ Graph* graph = nullptr;
 
 
 void Init( std::string path,std::string fileName){graph = new Graph(path+fileName);}
-void OutPut(Graph*graph,std::string fileName,const std::vector<std::string>&MovingCell);
+void OutPut(Graph*graph,std::string fileName);
 void OnlyRouting(Graph*graph,int batchSize = 1,bool overflow = false,float topPercent = 0);
 void RoutingWithCellMoving(Graph*graph);
 
@@ -63,13 +63,19 @@ int main(int argc, char** argv)
     // std::cout<<"pins time:"<<pinsTime.count()/1000<<"s\n";
     // std::cout<<"final score:"<<origin-graph->score<<"\n";
 
-    RoutingWithCellMoving(graph);
-    OnlyRouting(graph);
+    int num = 10;
+    while(num--){
+        RoutingWithCellMoving(graph);
+        OnlyRouting(graph);
+    }
     std::cout<<"final score:"<<origin-graph->score<<"\n";
     t2 = std::chrono::high_resolution_clock::now();
     std::chrono::duration<double, std::milli> t3(t2-t1);
     std::cout<<"spend :"<<t3.count()/1000<<"\n";
+    OutPut(graph,fileName);
     delete graph;
+    
+
 	return 0;
 }
 
@@ -83,12 +89,11 @@ std::map<Net*,int> RelatedNets(CellInst*c)
     }
     return Nets;
 }
-
-void OutPut(Graph*graph,std::string fileName,const std::vector<std::string>&MovingCell)
+void OutPut(Graph*graph,std::string fileName)
 {
 
     std::vector<std::string>segments;
-
+    std::cout<<"Routing complete !\n";
     PrintAll(graph,&segments);
     //寫成輸出檔案
     int NumRoutes = segments.size();
@@ -100,9 +105,9 @@ void OutPut(Graph*graph,std::string fileName,const std::vector<std::string>&Movi
         exit(1);
     } 
 
-    os<<"NumMovedCellInst "<<MovingCell.size()<<"\n";
-    for(auto cell:MovingCell)
-        os<<"CellInst "<<cell<<"\n";
+    os<<"NumMovedCellInst "<< graph->moved_cells.size() <<"\n";
+    for(auto cell:graph->moved_cells)
+        os<<"CellInst "<< cell->name << " " << cell->row << " " << cell->col <<"\n";
     os<<"NumRoutes "<<NumRoutes<<"\n";
 
     for(auto s:segments)
@@ -137,11 +142,13 @@ void movRouting(Graph*graph,std::vector<netinfo>&netlist,CellInst*movCell)
     float sc = graph->score;
     std::vector<ReroutInfo>infos;std::vector<int>RipId;infos.reserve(netlist.size());RipId.reserve(netlist.size());
     
+   
+
     for(int j = 0;j<netlist.size();j++){
         int nid = netlist.at(j).netId;
-      
         allSucces = overFlowRouting(graph,nid,infos,RipId,0,nullptr);
         if(!allSucces)break;
+
     }
   
     if(allSucces&&graph->score <= sc){
@@ -153,7 +160,11 @@ void movRouting(Graph*graph,std::vector<netinfo>&netlist,CellInst*movCell)
         Reject(graph,infos,RipId);
         movCell->row = movCell->originalRow;
         movCell->col = movCell->originalCol;
-        graph->insertCellsBlkg(movCell);
+
+        if(!graph->insertCellsBlkg(movCell))
+        {
+            std::cerr<<"error in insert\n";
+        }
     }
 }
 
@@ -199,13 +210,7 @@ void RoutingWithCellMoving(Graph*graph)
 			graph->moved_cells.erase(movCell);
 		}
         
-
-
-
     }
-
-
-
 
 
 }
