@@ -53,6 +53,7 @@ struct CellInst{
     int col;//<gGridColIdx>
 
 	int originalRow, originalCol;
+    int initRow, initCol;
 
     bool Movable;//<movableCstr>
     //VoltageArea* vArea;//null if no VoltageArea
@@ -63,9 +64,11 @@ struct CellInst{
 	std::vector<Net*> nets;
 	std::vector<int> optimalRegion;
 
-	void fixCell();
+    void fixCell();
 	void updateOptimalRegion();
-	bool inOptimalRegion(int row, int col);
+	bool inOptimalRegion(int, int);
+	void expandOptimalReion(int, int, int, int, int);
+    std::string name;
 };
 
 
@@ -77,6 +80,11 @@ struct Ggrid{
     {
         if(is_overflow()){return 0;}
         return capacity - demand;
+    }
+    float congestion_rate()
+    {
+        if(!capacity)return 1;
+        return demand/capacity;
     }
     void add_demand(int dmd=1,int netid = 0,bool nocheck = false){
         demand+=dmd; 

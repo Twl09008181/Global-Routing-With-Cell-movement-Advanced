@@ -13,14 +13,14 @@ Graph* graph = nullptr;
 void Init( std::string path,std::string fileName){graph = new Graph(path+fileName);}
 void OutPut(Graph*graph,std::string fileName,const std::vector<std::string>&MovingCell);
 void OnlyRouting(Graph*graph,int batchSize = 1,bool overflow = false,float topPercent = 0);
-
+void RoutingWithCellMoving(Graph*graph);
 
 #include <chrono>
 std::chrono::duration<double, std::milli> IN;
 std::chrono::duration<double, std::milli> RoutingTime;
 std::chrono::duration<double, std::milli> pinsTime;
 
-
+std::chrono::duration<double,std::milli>movtime;
 
 table strtable;
 float origin;
@@ -29,7 +29,7 @@ float origin;
 int main(int argc, char** argv)
 {
     auto t1 = std::chrono::high_resolution_clock::now();
-
+    auto t2 = std::chrono::high_resolution_clock::now();
     readLUT();
     if(argc!=2){
         std::cerr<<"Wrong parameters!"<<std::endl;
@@ -41,27 +41,34 @@ int main(int argc, char** argv)
     Init(path,fileName);    
     strtable.init(graph);
     origin = graph->score;
-    auto t2 = std::chrono::high_resolution_clock::now();
-    IN = t2-t1;
+    // t2 = std::chrono::high_resolution_clock::now();
+    // IN = t2-t1;
 
-    std::cout<<"graph Init done!\n";
-    std::cout<<"Init score : "<<graph->score<<"\n";
-    std::cout<<"init time :"<<(IN).count()/1000<<"s \n";
+    // std::cout<<"graph Init done!\n";
+    // std::cout<<"Init score : "<<graph->score<<"\n";
+    // std::cout<<"init time :"<<(IN).count()/1000<<"s \n";
 
 
 
-    OnlyRouting(graph,1,true,0.9);
+    // OnlyRouting(graph,1,true,0.9);
 
-    std::cout<<"Routing complete !\n";
-    std::cout<<"final score:"<<origin-graph->score<<"\n";
-    OutPut(graph,fileName,{});
+    // std::cout<<"Routing complete !\n";
+    // std::cout<<"final score:"<<origin-graph->score<<"\n";
+    // OutPut(graph,fileName,{});
 
-    t2 = std::chrono::high_resolution_clock::now();
-    std::chrono::duration<double, std::milli> t3(t2-t1);
-    std::cout<<"total : "<<t3.count()/1000<<" s \n";
+    // t2 = std::chrono::high_resolution_clock::now();
+    // std::chrono::duration<double, std::milli> t3(t2-t1);
+    // std::cout<<"total : "<<t3.count()/1000<<" s \n";
     // std::cout<<"Routing time:"<<RoutingTime.count()/1000<<"s\n";
     // std::cout<<"pins time:"<<pinsTime.count()/1000<<"s\n";
     // std::cout<<"final score:"<<origin-graph->score<<"\n";
+
+    RoutingWithCellMoving(graph);
+    OnlyRouting(graph);
+    std::cout<<"final score:"<<origin-graph->score<<"\n";
+    t2 = std::chrono::high_resolution_clock::now();
+    std::chrono::duration<double, std::milli> t3(t2-t1);
+    std::cout<<"spend :"<<t3.count()/1000<<"\n";
     delete graph;
 	return 0;
 }
@@ -119,4 +126,86 @@ void OnlyRouting(Graph*graph,int batchSize,bool overflow,float topPercent)
     }
     //------------------------------------------------------------
     routing(graph,netlist,0,netlist.size(),RoutingSchedule,batchSize);
+}
+
+
+
+
+void movRouting(Graph*graph,std::vector<netinfo>&netlist,CellInst*movCell)
+{
+    bool allSucces = true;
+    float sc = graph->score;
+    std::vector<ReroutInfo>infos;std::vector<int>RipId;infos.reserve(netlist.size());RipId.reserve(netlist.size());
+    
+    for(int j = 0;j<netlist.size();j++){
+        int nid = netlist.at(j).netId;
+      
+        allSucces = overFlowRouting(graph,nid,infos,RipId,0,nullptr);
+        if(!allSucces)break;
+    }
+  
+    if(allSucces&&graph->score <= sc){
+        Accept(graph,infos);
+        movCell->originalRow = movCell->row;
+        movCell->originalCol = movCell->col;
+        std::cout<<"score:"<<origin-graph->score<<"\n";
+    }else{
+        Reject(graph,infos,RipId);
+        movCell->row = movCell->originalRow;
+        movCell->col = movCell->originalCol;
+        graph->insertCellsBlkg(movCell);
+    }
+}
+
+void RoutingWithCellMoving(Graph*graph)
+{
+    graph->placementInit();
+
+    std::pair<std::string,CellInst*>movcellPair;
+
+    int mov = 0;
+    while((movcellPair=graph->cellMoving()).second)
+    {
+        CellInst* movCell = movcellPair.second;
+        mov++;
+        graph->moved_cells.insert(movCell);
+        if(graph->moved_cells.size()>graph->MAX_Cell_MOVE)
+        {
+            movCell->row = movCell->originalRow;
+            movCell->col = movCell->originalCol;
+            graph->insertCellsBlkg(movCell);
+			if(movCell->row == movCell->initRow && movCell->col == movCell->initCol){
+				graph->moved_cells.erase(movCell);
+			}
+            continue;
+        }
+
+
+        std::map<Net*,int>Nets = RelatedNets(movCell);
+        std::vector<netinfo>Netsid;Netsid.reserve(Nets.size());
+
+        for(auto n:Nets)
+        {
+            int nid = std::stoi(n.first->netName.substr(1,-1));
+            int hpwl = HPWL(n.first);
+            int wl = graph->getNetGrids(nid)->wl();
+            Netsid.push_back({nid,hpwl,wl});
+        }
+
+
+        movRouting(graph,Netsid,movCell);
+       
+        if(movCell->row == movCell->initRow && movCell->col == movCell->initCol){
+			graph->moved_cells.erase(movCell);
+		}
+        
+
+
+
+    }
+
+
+
+
+
 }

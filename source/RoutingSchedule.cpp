@@ -36,6 +36,7 @@ bool RoutingSchedule(Graph*graph,int netid,std::vector<ReroutInfo>&infos,std::ve
         AddingNet(graph,oldnet);
         **overflowNet = std::move(result.first);
         routingsuccess = false;
+        // std::cout<<oldnet->NetId<<"overflow\n";
     }
     else{ //not overflow
         if(result.second) //success
@@ -49,6 +50,12 @@ bool RoutingSchedule(Graph*graph,int netid,std::vector<ReroutInfo>&infos,std::ve
             delete result.first.netgrids;
             delete result.first.nettree;
             oldnet->set_fixed(false);
+            // std::cout<<oldnet->NetId<<"failed\n";
+
+            if(overflowNet){
+                delete *overflowNet;
+                *overflowNet = nullptr;
+            }
             routingsuccess = false;
             if(overflowNet)
             {
@@ -152,15 +159,18 @@ bool overFlowRouting(Graph*graph,int Netid,std::vector<ReroutInfo>&infos,std::ve
    
     if(!RoutingSchedule(graph,Netid,infos,RipId,0,&overflowNet))//overflow
     {   
+        // std::cout<<"overflow routing failed \n";
         if(!overflowNet)
         {
             return false;  //sometimes this overflownet be reroute because other overflow net process.
         }
         auto oldnet = graph->getNetGrids(Netid);
+        // std::cout<<"oldnet nid:"<<oldnet->NetId<<"\n";
         RipUpNet(graph,oldnet);
-
+        // std::cout<<"oldnet nid:"<<oldnet->NetId<<"\n";
+        // std::cout<<overflowNet->netgrids->grids.size()<<"\n";
         AddingNet(graph,overflowNet->netgrids);//force add
-       
+        
         // std::cout<<Netid<<"enter overflow process\n";
         if(!OverflowProcess(graph,overflowNet->netgrids,infos,RipId))//failed
         {
