@@ -161,18 +161,18 @@ float AddingNet(Graph*graph,NetGrids*net)
             }
             else{
                 std::cerr<<"AddingNet error net:"<<net->NetId<<"\n";
-                
-                PrintAll(graph);
-                for(auto n:graph->Nets)
-                {
-                    std::cout<<"N"<<n.first<<"\n";
-                    for(auto g:n.second->net_pins)
-                    {
-                        std::cout<<g.first->name<<" "<<g.first->row<<" "<<g.first->col<<" "<<g.first->mCell->pins[g.second]<<"\n";
-                    }
-                }
-
                 exit(1);
+                // PrintAll(graph);
+                // for(auto n:graph->Nets)
+                // {
+                //     std::cout<<"N"<<n.first<<"\n";
+                //     for(auto g:n.second->net_pins)
+                //     {
+                //         std::cout<<g.first->name<<" "<<g.first->row<<" "<<g.first->col<<" "<<g.first->mCell->pins[g.second]<<"\n";
+                //     }
+                // }
+
+                // exit(1);
             }
         }
     }
@@ -670,7 +670,7 @@ bool precheckTwoPins(Graph*graph,int NetId,TwoPinNets&twopins)
     return canRout;
 }
 
-
+extern bool t2t;
 std::pair<ReroutInfo,bool> Reroute(Graph*graph,int NetId,TwoPinNets&twopins,bool overflowMode)
 {
 
@@ -689,10 +689,13 @@ std::pair<ReroutInfo,bool> Reroute(Graph*graph,int NetId,TwoPinNets&twopins,bool
     for(auto pins:twopins)
     {   
         if(initdemand!=-1&&canRout)
-        {
-            // T = MazeRouting(graph,netgrids,pins.first,pins.second);
+        {   
+            if(!t2t)
+                T = MazeRouting(graph,netgrids,pins.first,pins.second);
+            else
+                T = Tree2Tree(graph,netgrids,pins.first->routing_tree,pins.second->routing_tree);
             // if(!T)
-            T = Tree2Tree(graph,netgrids,pins.first->routing_tree,pins.second->routing_tree);
+            // T = Tree2Tree(graph,netgrids,pins.first->routing_tree,pins.second->routing_tree);
         }
         if(!T) //把整個two-pin nets 繞線產生出來的tree全部collect成一棵回傳
         {

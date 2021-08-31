@@ -161,14 +161,15 @@ bool OverflowProcess(Graph*graph,NetGrids*overflownet,std::vector<ReroutInfo>&in
     return overflowGrids.empty();
 }
 
-
+extern std::chrono::duration<double, std::milli> OverFlowProcessTime;
 bool overFlowRouting(Graph*graph,int Netid,std::vector<ReroutInfo>&infos,std::vector<int>&RipId,int defaultLayer,ReroutInfo**)
 {
     ReroutInfo* overflowNet = new ReroutInfo;
     float sc = graph->score;
     bool success = true;
-   
-    if(!RoutingSchedule(graph,Netid,infos,RipId,0,&overflowNet))//failed
+
+    bool r = RoutingSchedule(graph,Netid,infos,RipId,0,&overflowNet);
+    if(!r)//failed
     {   
         if(!overflowNet)//not caused by overflow
         {
@@ -180,7 +181,7 @@ bool overFlowRouting(Graph*graph,int Netid,std::vector<ReroutInfo>&infos,std::ve
   
         AddingNet(graph,overflowNet->netgrids);//force add
         
-        
+        auto t1 = std::chrono::high_resolution_clock::now();
         if(!OverflowProcess(graph,overflowNet->netgrids,infos,RipId))//failed
         {
     
@@ -195,6 +196,8 @@ bool overFlowRouting(Graph*graph,int Netid,std::vector<ReroutInfo>&infos,std::ve
             infos.push_back(*overflowNet);
             RipId.push_back(Netid);
         } 
+        auto t2 = std::chrono::high_resolution_clock::now();
+        OverFlowProcessTime+=t2-t1;
     }
     else{//success
 
@@ -217,6 +220,7 @@ void routing(Graph*graph,std::vector<netinfo>&netlist,int start,int _end,routing
         int s = idx;
         int e = min((idx+batchsize),_end);
         for(int j = s;j<e;j++){
+            
             int nid = netlist.at(j).netId;
             _callback(graph,nid,infos,RipId,default_layer,nullptr);
         }

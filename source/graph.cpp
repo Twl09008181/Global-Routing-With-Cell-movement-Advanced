@@ -567,17 +567,33 @@ bool Graph::removeCellsBlkg(CellInst* cell){
 	return true;
 }
 
+
 bool Graph::insertCellsBlkg(CellInst* cell){
+	
+	std::vector<std::pair<Ggrid*,int>>blkgRecord;
+	bool canadd = true;
 	for(const auto& p : cell->mCell->blkgs){
 		const auto& name = p.first;
 		const auto& blkg = p.second;
 		
 		auto& grid = (*this)(cell->row, cell->col, blkg.first);
-        if(grid.get_remaining()<blkg.second)return false;
+        if(grid.get_remaining() < blkg.second){
+			canadd = false;
+			break;
+		}
+		blkgRecord.push_back({&grid,blkg.second});
 		grid.add_demand(blkg.second);
-		this->lay_uti(grid.lay).first+=blkg.second;
 	}
-	return true;
+	if(!canadd)
+	{
+		for(auto r:blkgRecord)
+		{
+			r.first->delete_demand(r.second);
+		}
+	}
+
+
+	return canadd;
 }
 
 
