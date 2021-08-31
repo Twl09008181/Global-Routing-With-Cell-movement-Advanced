@@ -437,7 +437,7 @@ void Graph::placementInit(){
 		//updating optimal region (CellInst)
 		for(const auto& p : CellInsts){
 			p.second->updateOptimalRegion();
-			insertCellsBlkg(p.second);
+			// insertCellsBlkg(p.second);
 		}	
 	}else{
 		for(const auto& p : CellInsts){
@@ -560,6 +560,7 @@ bool Graph::removeCellsBlkg(CellInst* cell){
 
 		auto& grid = (*this)(cell->row, cell->col, blkg.first);
 		grid.delete_demand(blkg.second);
+		this->lay_uti(grid.lay).first-=blkg.second;
 	}
 	return true;
 }
@@ -572,6 +573,7 @@ bool Graph::insertCellsBlkg(CellInst* cell){
 		auto& grid = (*this)(cell->row, cell->col, blkg.first);
         if(grid.get_remaining()<blkg.second)return false;
 		grid.add_demand(blkg.second);
+		this->lay_uti(grid.lay).first+=blkg.second;
 	}
 	return true;
 }

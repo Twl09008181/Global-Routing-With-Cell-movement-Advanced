@@ -157,6 +157,7 @@ void movRouting(Graph*graph,std::vector<netinfo>&netlist,CellInst*movCell)
         movCell->originalCol = movCell->col;
         std::cout<<"score:"<<origin-graph->score<<"\n";
     }else{
+        graph->removeCellsBlkg(movCell);
         Reject(graph,infos,RipId);
         movCell->row = movCell->originalRow;
         movCell->col = movCell->originalCol;
@@ -182,6 +183,7 @@ void RoutingWithCellMoving(Graph*graph)
         graph->moved_cells.insert(movCell);
         if(graph->moved_cells.size()>graph->MAX_Cell_MOVE)
         {
+            graph->removeCellsBlkg(movCell);
             movCell->row = movCell->originalRow;
             movCell->col = movCell->originalCol;
             graph->insertCellsBlkg(movCell);

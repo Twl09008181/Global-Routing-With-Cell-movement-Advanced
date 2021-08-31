@@ -107,8 +107,22 @@ bool OverflowProcess(Graph*graph,NetGrids*overflownet,std::vector<ReroutInfo>&in
 
 
     //find top layer
+    int toplay = 1;
+    float rate = 1.0;
+    for(int i = 2;i<graph->LayerNum();i++)
+    {
+        auto uti = graph->lay_uti(i);
+        float r = float(uti.first)/uti.second;
+        
+        if(r < rate)
+        {
+            toplay = i;
+            rate = r;
+        }
+    }
 
 
+    std::cout<<"rate = "<<rate<<" toplay :"<<toplay<<"\n";
 
     int idx = 0;
     int trylimit = 20;
@@ -125,7 +139,7 @@ bool OverflowProcess(Graph*graph,NetGrids*overflownet,std::vector<ReroutInfo>&in
         if(net->passScore > overflownet->passScore)continue;
         count++;
         net->recover_mode = true;
-        if(RoutingSchedule(graph,nid,of_infos,of_RipId))
+        if(RoutingSchedule(graph,nid,of_infos,of_RipId,toplay))
         {
             for(auto g:netids.at(idx-1).second)
             {
