@@ -614,20 +614,65 @@ tree* MazeRouting(Graph*graph,NetGrids*net,node*n1,node*n2)
 }
 
 
+//for check those pinset : p1,p2 are in same layer which is both minLayer and maxLay of this graph.
+bool precheckTwoPins(Graph*graph,int NetId,TwoPinNets&twopins)
+{
+    int minLay = graph->getNet(NetId).minLayer;
+    if(graph->LayerNum()!=minLay)return true;//do not need check
+
+    bool canRout = true;
+    for(auto pins:twopins)
+    {
+        if(pins.first->routing_tree!=pins.second->routing_tree)//connect edge
+        {
+            int r1 = pins.first->p.row;
+            int r2 = pins.second->p.row;
+            int c1 = pins.first->p.col;
+            int c2 = pins.second->p.col;
+            int l1 = pins.first->p.lay;
+            int l2 = pins.second->p.lay;
+            if(l1==minLay&&l1==l2)//same layer connect edge
+            {
+
+                int delta_r = r1-r2;
+                int delta_c = c1-c2;
+                if(!delta_r&&!delta_c)//2d
+                {
+                    canRout = false;break;
+                }
+                else if(delta_r&&graph->getLay(l1).horizontal)//1d but not routing dir
+                {
+                    canRout = false;break;
+                }
+                else if(delta_c&&!graph->getLay(l1).horizontal)
+                {
+                    canRout = false;break;
+                }
+            }
+        }
+    }
+    return canRout;
+}
 
 
 std::pair<ReroutInfo,bool> Reroute(Graph*graph,int NetId,TwoPinNets&twopins,bool overflowMode)
 {
+
+    //preCheck  
+    bool canRout = precheckTwoPins(graph,NetId,twopins);
+
     //std::cout<<"init"<<"\n";
     NetGrids * netgrids = new NetGrids(NetId,overflowMode);
     int initdemand = TwoPinNetsInit(graph,netgrids,twopins);//Init
     //std::cout<<"ImitDmd =  "<<initdemand<<"\n";
 
+
+    
     tree*T= nullptr;
     //std::cout<<"TwopinNet!\n";
     for(auto pins:twopins)
     {   
-        if(initdemand!=-1)
+        if(initdemand!=-1&&canRout)
         {
             // T = MazeRouting(graph,netgrids,pins.first,pins.second);
             // if(!T)
