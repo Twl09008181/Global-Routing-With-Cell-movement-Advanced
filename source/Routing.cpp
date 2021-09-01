@@ -501,19 +501,19 @@ tree* Tree2Tree(Graph*graph,NetGrids*net,tree*t1,tree*t2)
     bool t2isPesudo = TargetTree(graph,net,t2,target);//Multi Target
     
    
-    BoundingBox Bx (graph,&graph->getNet(net->NetId));
-    // BoundingBox Bx;
-    // if(sourceInit){
-    //     t1->updateEndPoint(graph);
-    //     t2->updateEndPoint(graph);    
-    //     if(t2isPesudo)//t2 is pesudo
-    //     {
-    //         Bx = BoundingBox (graph,&graph->getNet(net->NetId),t1,*t2->all.begin());
-    //     }
-    //     else{
-    //         Bx = BoundingBox (graph,&graph->getNet(net->NetId),t1,t2);
-    //     }
-    // }
+    // BoundingBox Bx (graph,&graph->getNet(net->NetId));
+    BoundingBox Bx;
+    if(sourceInit){
+        t1->updateEndPoint(graph);
+        t2->updateEndPoint(graph);    
+        if(t2isPesudo)//t2 is pesudo
+        {
+            Bx = BoundingBox (graph,&graph->getNet(net->NetId),t1,*t2->all.begin());
+        }
+        else{
+            Bx = BoundingBox (graph,&graph->getNet(net->NetId),t1,t2);
+        }
+    }
   
     node *targetPoint = nullptr;
     while(!Q.empty()&&!targetPoint&&sourceInit)
