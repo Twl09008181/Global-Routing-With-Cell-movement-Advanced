@@ -21,9 +21,9 @@ bool RoutingSchedule(Graph*graph,int netid,std::vector<ReroutInfo>&infos,std::ve
 bool overFlowRouting(Graph*graph,int Netid,std::vector<ReroutInfo>&infos,std::vector<int>&RipId,int defaultLayer=0,ReroutInfo**overflowNet=nullptr);
 using routing_callback = decltype(RoutingSchedule)*;
 
-void routing(Graph*graph,std::vector<netinfo>&netlist,int start,int _end,routing_callback _callback,int batchsize=1,int default_layer=0);
-
-
+void BatchRoute(Graph*graph,std::vector<netinfo>&netlist,int start,int _end,routing_callback _callback,int batchsize=1,int default_layer=0);
+void RouteAAoR(Graph*graph,std::vector<netinfo>&netlist);//Route "All" Accept or Reject , can be used as batch route.
+void Route(Graph*graph,std::vector<netinfo>&netlist);//Route "Single" Accept or Reject 
 //simple example
 // void OnlyRouting(Graph*graph,int batchSize,bool overflow,float topPercent)
 // {

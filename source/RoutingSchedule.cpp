@@ -190,28 +190,6 @@ bool overFlowRouting(Graph*graph,int Netid,std::vector<ReroutInfo>&infos,std::ve
 }
 
 
-
-void routing(Graph*graph,std::vector<netinfo>&netlist,int start,int _end,routing_callback _callback,int batchsize,int default_layer)
-{
-    float sc = graph->score;
-    for(int idx = start; idx < _end; idx += batchsize)
-    {
-        std::vector<ReroutInfo>infos;std::vector<int>RipId;infos.reserve(batchsize);RipId.reserve(batchsize);
-        int s = idx;
-        int e = min((idx+batchsize),_end);
-        for(int j = s;j<e;j++){
-            int nid = netlist.at(j).netId;
-            _callback(graph,nid,infos,RipId,default_layer,nullptr);
-        }
-        if(graph->score <= sc){
-            Accept(graph,infos);
-            sc = graph->score;
-        }else
-            Reject(graph,infos,RipId);
-    }
-}
-
-
 void Reject(Graph*graph,std::vector<ReroutInfo>&info,std::vector<int>&AlreadyRipUp)
 {
     for(auto reroute:info)
@@ -267,4 +245,113 @@ std::vector<netinfo> getNetlist(Graph*graph)//sort by  wl - hpwl
     // }
 
     return nets;
+}
+
+
+
+//BatchRoute
+void BatchRoute(Graph*graph,std::vector<netinfo>&netlist,int start,int _end,routing_callback _callback,int batchsize,int default_layer)
+{
+    float sc = graph->score;
+    for(int idx = start; idx < _end; idx += batchsize)
+    {
+        std::vector<ReroutInfo>infos;std::vector<int>RipId;infos.reserve(batchsize);RipId.reserve(batchsize);
+        int s = idx;
+        int e = min((idx+batchsize),_end);
+        for(int j = s;j<e;j++){
+            int nid = netlist.at(j).netId;
+            _callback(graph,nid,infos,RipId,default_layer,nullptr);
+        }
+        if(graph->score <= sc){
+            Accept(graph,infos);
+            sc = graph->score;
+        }else
+            Reject(graph,infos,RipId);
+    }
+}
+
+
+bool t2t = true;
+//Route All Accept or Reject
+void RouteAAoR(Graph*graph,std::vector<netinfo>&netlist)
+{
+
+    float sc = graph->score;
+    std::vector<ReroutInfo>infos;
+    std::vector<int>RipId;
+    infos.reserve(netlist.size());RipId.reserve(netlist.size());
+    t2t = true;
+    std::vector<int>failed;
+    for(int j = 0;j<netlist.size();j++){
+        int nid = netlist.at(j).netId;
+        if(!RoutingSchedule(graph,nid,infos,RipId))
+        {
+            failed.push_back(nid);
+        }
+    }
+    t2t = false;
+    bool success = true;
+    for(auto nid:failed)
+    {
+        if(!overFlowRouting(graph,nid,infos,RipId))
+        {
+            success = false;
+            break;
+        }
+    }
+
+
+    if(success&&graph->score <= sc){
+        Accept(graph,infos);
+    }else{
+        Reject(graph,infos,RipId);
+    }
+}
+
+
+
+//Route Single Accept or Reject 
+void Route(Graph*graph,std::vector<netinfo>&netlist)
+{
+    float sc = graph->score;
+    
+    std::vector<ReroutInfo>infos;
+    std::vector<int>RipId;
+
+    infos.reserve(netlist.size());RipId.reserve(netlist.size());
+
+    std::vector<int>failed;//using overflow Routing latter
+
+    t2t = true;
+    for(int j = 0;j<netlist.size();j++){
+        int nid = netlist.at(j).netId;
+        if(!RoutingSchedule(graph,nid,infos,RipId))
+        {
+            failed.push_back(nid);
+        }
+        else{
+            if(graph->score <= sc){
+                Accept(graph,infos);
+                sc = graph->score;
+            }
+            else{
+                Reject(graph,infos,RipId);
+            }
+        }
+    }
+
+    t2t = true;
+    for(auto nid:failed)
+    {
+        if(overFlowRouting(graph,nid,infos,RipId))
+        {
+            if(graph->score <= sc){
+                Accept(graph,infos);
+                sc = graph->score;
+            }
+            else{
+                Reject(graph,infos,RipId);
+            }
+        }
+    }
 }

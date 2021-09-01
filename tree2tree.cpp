@@ -12,7 +12,7 @@ Graph* graph = nullptr;
 
 void Init( std::string path,std::string fileName){graph = new Graph(path+fileName);}
 void OutPut(Graph*graph,std::string fileName,const std::vector<std::string>&MovingCell);
-void OnlyRouting(Graph*graph,int batchSize = 1,bool overflow = false,float topPercent = 0);
+// void OnlyRouting(Graph*graph,int batchSize = 1,bool overflow = false,float topPercent = 0);
 
 
 #include <chrono>
@@ -50,7 +50,12 @@ int main(int argc, char** argv)
 
 
 
-    OnlyRouting(graph);
+    // OnlyRouting(graph);
+    // routing2(graph);
+
+    auto netlist = getNetlist(graph);
+    Route(graph,netlist);
+    // RouteAAoR(graph,netlist);
 
     std::cout<<"Routing complete !\n";
     std::cout<<"final score:"<<origin-graph->score<<"\n";
@@ -108,15 +113,15 @@ void OutPut(Graph*graph,std::string fileName,const std::vector<std::string>&Movi
 }
 
 
-//先做一個topPercent的版本
-void OnlyRouting(Graph*graph,int batchSize,bool overflow,float topPercent)
-{
-    float sc = graph->score;
-    std::vector<netinfo> netlist = getNetlist(graph);//get netList
-    //-----------------overflow allowed----------------------------
-    if(overflow){
-        routing(graph,netlist,0,netlist.size()*topPercent,overFlowRouting,batchSize);
-    }
-    //------------------------------------------------------------
-    routing(graph,netlist,0,netlist.size(),RoutingSchedule,batchSize);
-}
+// //先做一個topPercent的版本
+// void OnlyRouting(Graph*graph,int batchSize,bool overflow,float topPercent)
+// {
+//     float sc = graph->score;
+//     std::vector<netinfo> netlist = getNetlist(graph);//get netList
+//     //-----------------overflow allowed----------------------------
+//     if(overflow){
+//         routing(graph,netlist,0,netlist.size()*topPercent,overFlowRouting,batchSize);
+//     }
+//     //------------------------------------------------------------
+//     routing(graph,netlist,0,netlist.size(),RoutingSchedule,batchSize);
+// }
