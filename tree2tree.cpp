@@ -54,8 +54,8 @@ int main(int argc, char** argv)
     // routing2(graph);
 
     auto netlist = getNetlist(graph);
-    Route(graph,netlist);
-    // RouteAAoR(graph,netlist);
+    // Route(graph,netlist);
+    RouteAAoR(graph,netlist);
 
     std::cout<<"Routing complete !\n";
     std::cout<<"final score:"<<origin-graph->score<<"\n";

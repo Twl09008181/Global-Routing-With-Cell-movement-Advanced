@@ -15,7 +15,7 @@ bool RoutingSchedule(Graph*graph,int netid,std::vector<ReroutInfo>&infos,std::ve
     //-------------------------------------RipUP----------------------------------
     auto oldnet = graph->getNetGrids(netid);
     if(oldnet->isFixed()){
-        if(overflowNet){delete *overflowNet;*overflowNet = nullptr;return false;}
+        if(overflowNet){std::cout<<netid<<"already solved\n";delete *overflowNet;*overflowNet = nullptr;return true;}//overflow mode and fixed(it was already solved by other overflow net.)
         if(!oldnet->recover_mode)
             std::cerr<<"warning,net :"<<netid<<" is_fixed = true \n";
         return false; //can't Routing this net.
@@ -23,7 +23,7 @@ bool RoutingSchedule(Graph*graph,int netid,std::vector<ReroutInfo>&infos,std::ve
 
 
     RipUpNet(graph,oldnet);
-    oldnet->set_fixed(true);
+    oldnet->set_fixed(true);//每次拆掉就fixed,直到accept or rejct or failed.
 
     //-------------------------------------Routing---------------------------------
     TwoPinNets twopins = twoPinsGen(graph->getNet(netid),defaultLayer);
@@ -108,10 +108,23 @@ bool OverflowProcess(Graph*graph,NetGrids*overflownet,std::vector<ReroutInfo>&in
 
     //find top layer
 
+    int toplay = 1;
+    float rate = 1.0;
+    for(int i = 2;i<graph->LayerNum();i++)
+    {
+        auto uti = graph->lay_uti(i);
+        float r = float(uti.first)/uti.second;
+        
+        if(r < rate-0.2)
+        {
+            toplay = i;
+            rate = r;
+        }
+    }
 
 
     int idx = 0;
-    int trylimit = 20;
+    int trylimit = 1000;
     int count = 0;
 
     //solving overflow
@@ -125,7 +138,7 @@ bool OverflowProcess(Graph*graph,NetGrids*overflownet,std::vector<ReroutInfo>&in
         if(net->passScore > overflownet->passScore)continue;
         count++;
         net->recover_mode = true;
-        if(RoutingSchedule(graph,nid,of_infos,of_RipId))
+        if(RoutingSchedule(graph,nid,of_infos,of_RipId,toplay))//using recover mode
         {
             for(auto g:netids.at(idx-1).second)
             {
@@ -158,7 +171,7 @@ bool overFlowRouting(Graph*graph,int Netid,std::vector<ReroutInfo>&infos,std::ve
     {   
         if(!overflowNet)//not caused by overflow
         {
-            return false;  //sometimes this overflownet be reroute because other overflow net process or routing failed caused by new two-pin nets.
+            return false;  //bounding box limit.
         }
         auto oldnet = graph->getNetGrids(Netid);
         RipUpNet(graph,oldnet);
@@ -180,7 +193,6 @@ bool overFlowRouting(Graph*graph,int Netid,std::vector<ReroutInfo>&infos,std::ve
         } 
     }
     else{//success
-
         if(graph->getNetGrids(Netid)->isOverflow())
         {
             std::cerr<<"error overflow !\n";
@@ -289,7 +301,7 @@ void RouteAAoR(Graph*graph,std::vector<netinfo>&netlist)
             failed.push_back(nid);
         }
     }
-    t2t = false;
+    t2t = true;
     bool success = true;
     for(auto nid:failed)
     {
