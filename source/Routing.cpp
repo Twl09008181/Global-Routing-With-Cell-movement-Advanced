@@ -161,6 +161,18 @@ float AddingNet(Graph*graph,NetGrids*net)
             }
             else{
                 std::cerr<<"AddingNet error net:"<<net->NetId<<"\n";
+                exit(1);
+                // PrintAll(graph);
+                // for(auto n:graph->Nets)
+                // {
+                //     std::cout<<"N"<<n.first<<"\n";
+                //     for(auto g:n.second->net_pins)
+                //     {
+                //         std::cout<<g.first->name<<" "<<g.first->row<<" "<<g.first->col<<" "<<g.first->mCell->pins[g.second]<<"\n";
+                //     }
+                // }
+
+                // exit(1);
             }
         }
     }
@@ -519,7 +531,7 @@ tree* Tree2Tree(Graph*graph,NetGrids*net,tree*t1,tree*t2)
     bool t2isPesudo = TargetTree(graph,net,t2,target);//Multi Target
     
    
-
+    // BoundingBox Bx (graph,&graph->getNet(net->NetId));
     BoundingBox Bx;
     if(sourceInit){
         t1->updateEndPoint(graph);
@@ -565,6 +577,10 @@ tree* Tree2Tree(Graph*graph,NetGrids*net,tree*t1,tree*t2)
         return t1;
     }
     else {
+        // if(net->NetId==3)
+        // {
+        //     std::cout<<"3 failed\n";
+        // }
         delete tmp;
         return nullptr;
     }
@@ -715,7 +731,7 @@ std::pair<ReroutInfo,bool> Reroute(Graph*graph,int NetId,TwoPinNets&twopins,bool
     //std::cout<<"init"<<"\n";
     NetGrids * netgrids = new NetGrids(NetId,overflowMode);
     int initdemand = TwoPinNetsInit(graph,netgrids,twopins);//Init
-    //std::cout<<"ImitDmd =  "<<initdemand<<"\n";
+   
 
 
     

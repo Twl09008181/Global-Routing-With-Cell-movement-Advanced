@@ -110,27 +110,25 @@ bool OverflowProcess(Graph*graph,NetGrids*overflownet,std::vector<ReroutInfo>&in
 
 
     //find top layer
-
-    int toplay = 0;
-    // float rate = 1.0;
-    // for(int i = 2;i<graph->LayerNum();i++)
-    // {
-    //     auto uti = graph->lay_uti(i);
-    //     float r = float(uti.first)/uti.second;
+    int toplay = 1;
+    float rate = 1.0;
+    for(int i = 2;i<=graph->LayerNum();i++)
+    {
+        auto uti = graph->lay_uti(i);
+        float r = float(uti.first)/uti.second;
         
-    //     if(r < rate-0.2)
-    //     {
-    //         toplay = i;
-    //         rate = r;
-    //     }
-    // }
+        if(r < rate-0.2)
+        {
+            toplay = i;
+            rate = r;
+        }
+    }
 
-
-    int idx = 0;
-    int trylimit = 1000;
-    int count = 0;
-
+ 
     //solving overflow
+    int idx = 0;
+    int count = 0;
+    int trylimit  = 20;
     std::vector<ReroutInfo>of_infos;std::vector<int>of_RipId;
     while(!overflowGrids.empty()&&idx<netids.size()&&count<=trylimit)
     {
@@ -163,27 +161,30 @@ bool OverflowProcess(Graph*graph,NetGrids*overflownet,std::vector<ReroutInfo>&in
     return overflowGrids.empty();
 }
 
-
+extern std::chrono::duration<double, std::milli> OverFlowProcessTime;
 bool overFlowRouting(Graph*graph,int Netid,std::vector<ReroutInfo>&infos,std::vector<int>&RipId,int defaultLayer,ReroutInfo**)
 {
     ReroutInfo* overflowNet = new ReroutInfo;
     float sc = graph->score;
     bool success = true;
-   
-    if(!RoutingSchedule(graph,Netid,infos,RipId,0,&overflowNet))//failed
+
+    bool r = RoutingSchedule(graph,Netid,infos,RipId,defaultLayer,&overflowNet);
+    if(!r)//failed
     {   
         if(!overflowNet)//not caused by overflow
         {
             return false;  //bounding box limit.
         }
         auto oldnet = graph->getNetGrids(Netid);
+   
         RipUpNet(graph,oldnet);
-
+  
         AddingNet(graph,overflowNet->netgrids);//force add
-       
-        // std::cout<<Netid<<"enter overflow process\n";
+        
+        auto t1 = std::chrono::high_resolution_clock::now();
         if(!OverflowProcess(graph,overflowNet->netgrids,infos,RipId))//failed
         {
+    
             RipUpNet(graph,overflowNet->netgrids);
             AddingNet(graph,graph->getNetGrids(Netid));
             oldnet->set_fixed(false);
@@ -191,9 +192,12 @@ bool overFlowRouting(Graph*graph,int Netid,std::vector<ReroutInfo>&infos,std::ve
             delete overflowNet->nettree;
             success = false;
         }else{//if success 
+
             infos.push_back(*overflowNet);
             RipId.push_back(Netid);
         } 
+        auto t2 = std::chrono::high_resolution_clock::now();
+        OverFlowProcessTime+=t2-t1;
     }
     else{//success
         if(graph->getNetGrids(Netid)->isOverflow())
@@ -293,7 +297,7 @@ void BatchRoute(Graph*graph,std::vector<netinfo>&netlist,int start,int _end,rout
             int nid = netlist.at(j).netId;
             _callback(graph,nid,infos,RipId,default_layer,nullptr);
         }
-        if(graph->score <= sc||change_state(sc,graph->score,netlist.size()-idx)){
+        if(graph->score < sc||change_state(sc,graph->score,netlist.size()-idx)){
             Accept(graph,infos);AcceptCount++;
             sc = graph->score;
         }else{
@@ -307,17 +311,18 @@ void BatchRoute(Graph*graph,std::vector<netinfo>&netlist,int start,int _end,rout
 
 
 
-
+extern bool t2t;
 // //Route All Accept or Reject
-void RouteAAoR(Graph*graph,std::vector<netinfo>&netlist)
+void RouteAAoR(Graph*graph,std::vector<netinfo>&netlist,CellInst*movCell)
 {
 
     float sc = graph->score;
     std::vector<ReroutInfo>infos;
     std::vector<int>RipId;
     infos.reserve(netlist.size());RipId.reserve(netlist.size());
-    // t2t = true;
+    
     std::vector<int>failed;
+    // t2t = true;
     for(int j = 0;j<netlist.size();j++){
         int nid = netlist.at(j).netId;
         if(!RoutingSchedule(graph,nid,infos,RipId))
@@ -325,8 +330,9 @@ void RouteAAoR(Graph*graph,std::vector<netinfo>&netlist)
             failed.push_back(nid);
         }
     }
-    // t2t = true;
+
     bool success = true;
+    // t2t = false;
     for(auto nid:failed)
     {
         if(!overFlowRouting(graph,nid,infos,RipId))
@@ -335,12 +341,25 @@ void RouteAAoR(Graph*graph,std::vector<netinfo>&netlist)
             break;
         }
     }
-
-
-    if(success&&(graph->score <= sc)){
+    
+    if(success&&(graph->score < sc)){
         Accept(graph,infos);
+        sc = graph->score;
+        if(movCell)
+        {
+            movCell->originalRow = movCell->row;
+            movCell->originalCol = movCell->col;
+        }
+
     }else{
         Reject(graph,infos,RipId);
+        if(movCell){
+            graph->removeCellsBlkg(movCell);
+            Reject(graph,infos,RipId);
+            movCell->row = movCell->originalRow;
+            movCell->col = movCell->originalCol;
+            graph->insertCellsBlkg(movCell);
+        }
     }
 }
 
@@ -358,9 +377,9 @@ void Route(Graph*graph,std::vector<netinfo>&netlist)
 
     std::vector<int>failed;//using overflow Routing latter
 
-    float temperature = 100000000000;
+   
 
-    // t2t = false;
+    // t2t = true;
     for(int j = 0;j<netlist.size();j++){
         int nid = netlist.at(j).netId;
         if(!RoutingSchedule(graph,nid,infos,RipId))
@@ -369,7 +388,7 @@ void Route(Graph*graph,std::vector<netinfo>&netlist)
             
         }
         else{
-            if(graph->score <= sc||change_state(sc,graph->score,temperature)){
+            if(graph->score < sc){
                 Accept(graph,infos);
                 sc = graph->score;AcceptCount++;
                 
@@ -379,15 +398,15 @@ void Route(Graph*graph,std::vector<netinfo>&netlist)
             }
             Accept(graph,infos);
         }
-        temperature*=0.995;
+  
     }
 
     // t2t = false;
     for(auto nid:failed)
     {
-        if(overFlowRouting(graph,nid,infos,RipId)||change_state(sc,graph->score,temperature))
+        if(overFlowRouting(graph,nid,infos,RipId))
         {
-            if(graph->score <= sc){
+            if(graph->score < sc){
                 Accept(graph,infos);
                 sc = graph->score;AcceptCount++;
             }
@@ -399,6 +418,6 @@ void Route(Graph*graph,std::vector<netinfo>&netlist)
         else{
             failedCount++;
         }
-        temperature*=0.995;
+
     }
 }

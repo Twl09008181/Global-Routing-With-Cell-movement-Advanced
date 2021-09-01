@@ -316,7 +316,7 @@ struct BoundingBox
     std::pair<int,int>ColBound;
     std::pair<int,int>LayBound;
     int _minCol,_maxCol,_minRow,_maxRow,_minLay,_maxLay;
-    int flexRow = 0,flexCol = 0,flexLay = 0;
+    int flexRow = 1,flexCol = 1,flexLay = 1;
     bool init = false;
 };
 
