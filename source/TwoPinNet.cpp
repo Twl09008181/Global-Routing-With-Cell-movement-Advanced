@@ -233,8 +233,8 @@ void get_two_pins(std::list<TwoPinNet>& two_pin_nets,Net&net)
     //Step4 : generate Init routing tree and consider those who have same 2D-pos by using via. 
     treeInit(pins,PointMap,two_pin_nets);
 
-    if(t.branch!=nullptr)
-        free(t.branch);
+    // if(t.branch!=nullptr)
+    //     free(t.branch);
 
 
 }

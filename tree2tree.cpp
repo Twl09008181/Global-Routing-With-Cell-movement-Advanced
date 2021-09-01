@@ -50,7 +50,7 @@ int main(int argc, char** argv)
 
 
 
-    OnlyRouting(graph,1,true,0.9);
+    OnlyRouting(graph);
 
     std::cout<<"Routing complete !\n";
     std::cout<<"final score:"<<origin-graph->score<<"\n";
