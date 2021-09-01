@@ -55,7 +55,7 @@ ${DIR_SOURCE}/graph.o:${DIR_SOURCE}/graph.cpp ${DIR_HEADER}/graph.hpp ${DIR_HEAD
 ${DIR_SOURCE}/data_structure.o:${DIR_SOURCE}/data_structure.cpp ${DIR_HEADER}/data_structure.hpp ${DIR_FLUTE}/flute.h
 	${CXX} ${CXXFLAGS} $< -o $@
 
-${DIR_SOURCE}/Routing.o:${DIR_SOURCE}/Routing.cpp ${DIR_HEADER}/data_structure.hpp ${DIR_HEADER}/graph.hpp ${DIR_HEADER}/TwoPinNet.hpp
+${DIR_SOURCE}/Routing.o:${DIR_SOURCE}/Routing.cpp ${DIR_HEADER}/data_structure.hpp ${DIR_HEADER}/graph.hpp ${DIR_HEADER}/TwoPinNet.hpp ${DIR_HEADER}/Routing.hpp
 	${CXX} ${CXXFLAGS} $< -o $@
 
 ${DIR_SOURCE}/TwoPinNet.o:${DIR_SOURCE}/TwoPinNet.cpp ${DIR_HEADER}/Routing.hpp ${DIR_HEADER}/graph.hpp ${DIR_HEADER}/TwoPinNet.hpp

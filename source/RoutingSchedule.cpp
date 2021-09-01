@@ -2,7 +2,7 @@
 
 
 
-
+extern std::chrono::duration<double, std::milli> RoutingTime;
 //Generic Routing Schedule
 //if routing success, add demand and save to infos&RipId. Caller must call Accept or Rejcet itself.
 //if routing failed , recover oldnet. 
@@ -26,9 +26,12 @@ bool RoutingSchedule(Graph*graph,int netid,std::vector<ReroutInfo>&infos,std::ve
     oldnet->set_fixed(true);//每次拆掉就fixed,直到accept or rejct or failed.
 
     //-------------------------------------Routing---------------------------------
+    #include <chrono>
+    auto t1 = std::chrono::high_resolution_clock::now();
     TwoPinNets twopins = twoPinsGen(graph->getNet(netid),defaultLayer);
     std::pair<ReroutInfo,bool> result = Reroute(graph,netid,twopins,overflowmode);
-
+    auto t2 = std::chrono::high_resolution_clock::now();
+    RoutingTime+=t2-t1;
     //-------------------------------------Adding or Recover---------------------------------
     if(result.second)//can connect all twopin-nets
     {
@@ -108,19 +111,19 @@ bool OverflowProcess(Graph*graph,NetGrids*overflownet,std::vector<ReroutInfo>&in
 
     //find top layer
 
-    int toplay = 1;
-    float rate = 1.0;
-    for(int i = 2;i<graph->LayerNum();i++)
-    {
-        auto uti = graph->lay_uti(i);
-        float r = float(uti.first)/uti.second;
+    int toplay = 0;
+    // float rate = 1.0;
+    // for(int i = 2;i<graph->LayerNum();i++)
+    // {
+    //     auto uti = graph->lay_uti(i);
+    //     float r = float(uti.first)/uti.second;
         
-        if(r < rate-0.2)
-        {
-            toplay = i;
-            rate = r;
-        }
-    }
+    //     if(r < rate-0.2)
+    //     {
+    //         toplay = i;
+    //         rate = r;
+    //     }
+    // }
 
 
     int idx = 0;
@@ -260,7 +263,23 @@ std::vector<netinfo> getNetlist(Graph*graph)//sort by  wl - hpwl
 }
 
 
+#include <stdio.h>
+#include <stdlib.h>
+#include <time.h>
 
+bool change_state(int cost1,int cost2,float temperature)
+{
+    srand( time(NULL) );
+    double x = (double) rand() / (RAND_MAX + 1.0);
+    int delta_cost = cost2-cost1;
+   
+    return x < std::exp(-delta_cost/temperature);//t越小,exp值越小,越不可能跳,delta越大,越不可能跳
+}
+
+extern int failedCount;
+extern int RejectCount;
+extern int AcceptCount;
+extern int overflowSolved;
 //BatchRoute
 void BatchRoute(Graph*graph,std::vector<netinfo>&netlist,int start,int _end,routing_callback _callback,int batchsize,int default_layer)
 {
@@ -274,17 +293,22 @@ void BatchRoute(Graph*graph,std::vector<netinfo>&netlist,int start,int _end,rout
             int nid = netlist.at(j).netId;
             _callback(graph,nid,infos,RipId,default_layer,nullptr);
         }
-        if(graph->score <= sc){
-            Accept(graph,infos);
+        if(graph->score <= sc||change_state(sc,graph->score,netlist.size()-idx)){
+            Accept(graph,infos);AcceptCount++;
             sc = graph->score;
-        }else
-            Reject(graph,infos,RipId);
+        }else{
+            Reject(graph,infos,RipId);RejectCount++;
+        }
     }
 }
 
 
-bool t2t = true;
-//Route All Accept or Reject
+
+
+
+
+
+// //Route All Accept or Reject
 void RouteAAoR(Graph*graph,std::vector<netinfo>&netlist)
 {
 
@@ -292,7 +316,7 @@ void RouteAAoR(Graph*graph,std::vector<netinfo>&netlist)
     std::vector<ReroutInfo>infos;
     std::vector<int>RipId;
     infos.reserve(netlist.size());RipId.reserve(netlist.size());
-    t2t = true;
+    // t2t = true;
     std::vector<int>failed;
     for(int j = 0;j<netlist.size();j++){
         int nid = netlist.at(j).netId;
@@ -301,7 +325,7 @@ void RouteAAoR(Graph*graph,std::vector<netinfo>&netlist)
             failed.push_back(nid);
         }
     }
-    t2t = true;
+    // t2t = true;
     bool success = true;
     for(auto nid:failed)
     {
@@ -313,7 +337,7 @@ void RouteAAoR(Graph*graph,std::vector<netinfo>&netlist)
     }
 
 
-    if(success&&graph->score <= sc){
+    if(success&&(graph->score <= sc)){
         Accept(graph,infos);
     }else{
         Reject(graph,infos,RipId);
@@ -334,36 +358,47 @@ void Route(Graph*graph,std::vector<netinfo>&netlist)
 
     std::vector<int>failed;//using overflow Routing latter
 
-    t2t = true;
+    float temperature = 100000000000;
+
+    // t2t = false;
     for(int j = 0;j<netlist.size();j++){
         int nid = netlist.at(j).netId;
         if(!RoutingSchedule(graph,nid,infos,RipId))
         {
             failed.push_back(nid);
+            
         }
         else{
-            if(graph->score <= sc){
+            if(graph->score <= sc||change_state(sc,graph->score,temperature)){
                 Accept(graph,infos);
-                sc = graph->score;
+                sc = graph->score;AcceptCount++;
+                
             }
             else{
-                Reject(graph,infos,RipId);
+                Reject(graph,infos,RipId);RejectCount++;
             }
+            Accept(graph,infos);
         }
+        temperature*=0.995;
     }
 
-    t2t = true;
+    // t2t = false;
     for(auto nid:failed)
     {
-        if(overFlowRouting(graph,nid,infos,RipId))
+        if(overFlowRouting(graph,nid,infos,RipId)||change_state(sc,graph->score,temperature))
         {
             if(graph->score <= sc){
                 Accept(graph,infos);
-                sc = graph->score;
+                sc = graph->score;AcceptCount++;
             }
             else{
-                Reject(graph,infos,RipId);
+                Reject(graph,infos,RipId);RejectCount++;
             }
+            overflowSolved++;
         }
+        else{
+            failedCount++;
+        }
+        temperature*=0.995;
     }
 }

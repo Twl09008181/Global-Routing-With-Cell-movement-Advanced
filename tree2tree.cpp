@@ -25,7 +25,11 @@ std::chrono::duration<double, std::milli> pinsTime;
 table strtable;
 float origin;
 
-
+bool t2t =false;//---------------------------------------t2t or mz-------------------------------------
+int failedCount;
+int RejectCount;
+int AcceptCount;
+int overflowSolved;
 int main(int argc, char** argv)
 {
     auto t1 = std::chrono::high_resolution_clock::now();
@@ -54,8 +58,9 @@ int main(int argc, char** argv)
     // routing2(graph);
 
     auto netlist = getNetlist(graph);
-    // Route(graph,netlist);
-    RouteAAoR(graph,netlist);
+    
+    Route(graph,netlist);
+    // RouteAAoR(graph,netlist);
 
     std::cout<<"Routing complete !\n";
     std::cout<<"final score:"<<origin-graph->score<<"\n";
@@ -64,7 +69,11 @@ int main(int argc, char** argv)
     t2 = std::chrono::high_resolution_clock::now();
     std::chrono::duration<double, std::milli> t3(t2-t1);
     std::cout<<"total : "<<t3.count()/1000<<" s \n";
-    // std::cout<<"Routing time:"<<RoutingTime.count()/1000<<"s\n";
+    std::cout<<"routing failed count:"<<failedCount<<"\n";
+    std::cout<<"overflowSolved count:"<<overflowSolved<<"\n";
+    std::cout<<"Accept rate:"<<100*float(AcceptCount)/(AcceptCount+RejectCount)<<"%\n";
+
+    std::cout<<"Routing time:"<<RoutingTime.count()/1000<<"s\n";
     // std::cout<<"pins time:"<<pinsTime.count()/1000<<"s\n";
     // std::cout<<"final score:"<<origin-graph->score<<"\n";
     delete graph;
