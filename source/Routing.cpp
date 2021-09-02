@@ -41,7 +41,6 @@ bool passing(Ggrid*grid,NetGrids*net)
 
 
 
-
 //--------------------------------------------------two-pin-sets function---------------------------------------------------
 int TwoPinNetsInit(Graph*graph,NetGrids*net,TwoPinNets&pinset)
 {
@@ -112,10 +111,9 @@ void Backtack_Sgmt_Grid(Graph*graph,NetGrids*net,node*v,bool(*f)(Ggrid*,NetGrids
 }
 //------------------------------------------------Demand Interface------------------------------------------------------------------------
 
-
 float RipUpNet(Graph*graph,NetGrids*net)
 {
-  
+    auto t1 = std::chrono::high_resolution_clock::now();
     float sc = 0;
      
     float weight = graph->getNet(net->NetId).weight;
@@ -134,15 +132,15 @@ float RipUpNet(Graph*graph,NetGrids*net)
     }
     net->passScore-=sc;
     graph->score-=sc;
+    auto t2 = std::chrono::high_resolution_clock::now();
 
 
     return sc;
 }
 float AddingNet(Graph*graph,NetGrids*net)
 {
-
+    auto t1 = std::chrono::high_resolution_clock::now();
     float sc = 0;
-    
     float weight = graph->getNet(net->NetId).weight;
     for(auto &g:net->grids)
     {
@@ -161,12 +159,12 @@ float AddingNet(Graph*graph,NetGrids*net)
             }
             else{
                 std::cerr<<"AddingNet error net:"<<net->NetId<<"\n";
-                exit(1);
             }
         }
     }
     net->passScore+=sc;
     graph->score+=sc;
+    auto t2 = std::chrono::high_resolution_clock::now();
     net->ResetFlag();
     return sc;
 }
@@ -247,12 +245,11 @@ void PrintAll(Graph*graph,std::vector<std::string>*segment)
 
 tree* getPath(Graph*graph,NetGrids*net,node*v,std::unordered_map<node*,bool>&t1Point)
 {
-
-    auto Adding = [&graph](tree*path,NetGrids*net,node*n)
+ auto Adding = [&graph](tree*path,NetGrids*net,node*n)
     {
         auto &g = (*graph)(n->p.row,n->p.col,n->p.lay);
-        bool enough = (net->AlreadyPass(&g))? true : g.get_remaining(); 
-        if(!enough){
+        bool enough = (net->AlreadyPass(&g))? true : g.get_remaining();
+       if(!enough){
             if(net->overflow_mode){net->overflow();}
             else{std::cerr<<"getPath error, overflow happend\n";exit(1);}
         }
@@ -262,7 +259,6 @@ tree* getPath(Graph*graph,NetGrids*net,node*v,std::unordered_map<node*,bool>&t1P
     
     tree* path = new tree;
     node* last = new node(v->p);//new a node (different memory from tmp in T2T or maze.)
-    // Adding.............  
     Adding(path,net,last);
     v = v->parent;
     while(v)
@@ -271,69 +267,49 @@ tree* getPath(Graph*graph,NetGrids*net,node*v,std::unordered_map<node*,bool>&t1P
         Adding(path,net,n);
         last->connect(n);
         last = n;
+        net->PassGrid(graph,n);
         if(t1Point.find(v)!=t1Point.end())break;
+        
         v = v->parent;
     }
     return path;
 }
 
-bool BoundaryCheck(Graph*graph,NetGrids*net,node *v,const pos&delta,BoundingBox &Bx,int *errorNum=nullptr)
+bool BoundaryCheck(Graph*graph,NetGrids*net,node *v,const pos&delta,BoundingBox &Bx)
 {
-
-    int maxRow,minRow,maxCol,minCol,maxLay,minLay;
-    Bx.getBound(maxRow,minRow,maxCol,minCol,maxLay,minLay);
-
-    if(delta.row!=0&&v->p.lay%2==1){
-        if(errorNum){*errorNum = 0;}
-        return false;
-    }//error routing dir
-    if(delta.col!=0&&v->p.lay%2==0){
-        if(errorNum){*errorNum = 0;}
-        return false;
-    }//error routing dir
+    if(delta.row!=0&&v->p.lay%2==1){return false;}//error routing dir
+    if(delta.col!=0&&v->p.lay%2==0){return false;}//error routing dir
 
     //Boundary checking
     pos P = {v->p.row+delta.row,v->p.col+delta.col,v->p.lay+delta.lay};
-    
-    //graph boundary check
-    if(P.row<graph->RowBound().first||P.row>graph->RowBound().second){if(errorNum){*errorNum = 0;}return false;}
-    if(P.col<graph->ColBound().first||P.col>graph->ColBound().second){if(errorNum){*errorNum = 0;}return false;}
-    if(P.lay<graph->getNet(net->NetId).minLayer||P.lay>graph->LayerNum()){if(errorNum){*errorNum = 0;}return false;}
+    if(P.row<Bx._minRow||P.row>Bx._maxRow){return false;} //RowBound checking
+    if(P.col<Bx._minCol||P.col>Bx._maxCol){return false;} //ColBound checking
 
-    //Bounding Box check
-    if(P.row<minRow||P.row>maxRow){if(errorNum){*errorNum = 1;}return false;}
-    if(P.col<minCol||P.col>maxCol){if(errorNum){*errorNum = 2;}return false;} 
-    if(P.lay<minLay||P.lay>maxLay){if(errorNum){*errorNum = 3;}return false;}
+    int minLayer = graph->getNet(net->NetId).minLayer;
+    if(P.lay<minLayer ||P.lay>graph->LayerNum()){return false;}//minLayer checking
 
     return true;
 }
 
 bool CapacityCheck(NetGrids*net,Ggrid&g)
 {
-    bool enough = (net->AlreadyPass(&g))? true : g.get_remaining(); 
-    
+    bool enough = (net->AlreadyPass(&g))? true : g.get_remaining(); ////need change  first come,first serve
+
+
+
+
     if(!enough&&!net->overflow_mode){//new feature: overflow_mode can bypass this check.
         return false;
     }
-
     return true;
 }
 
-//for t2t
-node* Search(Graph*graph,NetGrids*net,node *v,const pos&delta,std::unordered_map<std::string,float>&gridCost,tree*tmp,BoundingBox &Bx,
-std::priority_queue<node*,std::vector<node*>,minCost>&q2)
+
+node* Search(Graph*graph,NetGrids*net,node *v,const pos&delta,std::unordered_map<std::string,float>&gridCost,tree*tmp,BoundingBox &Bx)
 {
     ///Dir&Boundary checking
-    int errorNum = 0;
-    if(!BoundaryCheck(graph,net,v,delta,Bx,&errorNum))
-    {   
-        if(errorNum==0)return nullptr;//error dir or graph bounding error or minlayer error
-        else{//Bounding box error
-            errorNum = -1;
-        }
-    }
-
-
+    if(!BoundaryCheck(graph,net,v,delta,Bx))return nullptr;
+    
     pos P = {v->p.row+delta.row,v->p.col+delta.col,v->p.lay+delta.lay};
     //std::cout<<"get g1\n";
     Ggrid& g = (*graph)(P.row,P.col,P.lay);
@@ -352,12 +328,6 @@ std::priority_queue<node*,std::vector<node*>,minCost>&q2)
     node * n = new node(P);
     n->cost = (net->AlreadyPass(&g))? 0:weight*pf+v->cost;////need
 
-    if(!g.get_remaining())
-    {
-        n->cost += g.demand/g.capacity;
-    }
-    
-
     if(n->cost<lastCost)
     {
         tmp->addNode(n);
@@ -368,13 +338,7 @@ std::priority_queue<node*,std::vector<node*>,minCost>&q2)
         delete n;
         n = nullptr;
     }
-
-    if(!errorNum||!n)
-        return n;
-    else{//-1
-        q2.push(n);
-        return nullptr;
-    }
+    return n;
 }
 
 
@@ -504,8 +468,7 @@ bool isTarget(node *v,std::unordered_map<std::string,node*>&target)
     }
     return false;
 }
-extern bool firstRout;
-extern int Bxflex;
+
 tree* Tree2Tree(Graph*graph,NetGrids*net,tree*t1,tree*t2)
 {
     if(t1==t2)return t1;//precheck
@@ -521,7 +484,7 @@ tree* Tree2Tree(Graph*graph,NetGrids*net,tree*t1,tree*t2)
     bool t2isPesudo = TargetTree(graph,net,t2,target);//Multi Target
     
    
-    // BoundingBox Bx (graph,&graph->getNet(net->NetId));
+
     BoundingBox Bx;
     if(sourceInit){
         t1->updateEndPoint(graph);
@@ -534,30 +497,24 @@ tree* Tree2Tree(Graph*graph,NetGrids*net,tree*t1,tree*t2)
             Bx = BoundingBox (graph,&graph->getNet(net->NetId),t1,t2);
         }
     }
-    if(firstRout){Bx.initFlex(Bxflex);}
-    else{Bx.initFlex(3);}
-    std::priority_queue<node*,std::vector<node*>,minCost>Q2;
+  
     node *targetPoint = nullptr;
-    while(Bx.loosen()&&sourceInit&&!targetPoint&&!Q.empty()){
-
-        while(!Q.empty()&&!targetPoint&&sourceInit)
+    while(!Q.empty()&&!targetPoint&&sourceInit)
+    {
+        node * v = Q.top();Q.pop();
+       
+        if(isTarget(v,target))//find
         {
-            node * v = Q.top();Q.pop();
-        
-            if(isTarget(v,target))//find
-            {
-                targetPoint = v;
-                break;
-            }
-            node * u = nullptr;
-            if(u = Search(graph,net,v,{0,0,1},gridCost,tmp,Bx,Q2))Q.push(u); //up
-            if(u = Search(graph,net,v,{0,0,-1},gridCost,tmp,Bx,Q2))Q.push(u);//down
-            if(u = Search(graph,net,v,{0,1,0},gridCost,tmp,Bx,Q2))Q.push(u);//-col
-            if(u = Search(graph,net,v,{0,-1,0},gridCost,tmp,Bx,Q2))Q.push(u);//+col
-            if(u = Search(graph,net,v,{1,0,0},gridCost,tmp,Bx,Q2))Q.push(u);//+row
-            if(u = Search(graph,net,v,{-1,0,0},gridCost,tmp,Bx,Q2))Q.push(u);//-row
+            targetPoint = v;
+            break;
         }
-        Q = std::move(Q2);
+        node * u = nullptr;
+        if(u = Search(graph,net,v,{0,0,1},gridCost,tmp,Bx))Q.push(u); //up
+        if(u = Search(graph,net,v,{0,0,-1},gridCost,tmp,Bx))Q.push(u);//down
+        if(u = Search(graph,net,v,{0,1,0},gridCost,tmp,Bx))Q.push(u);//-col
+        if(u = Search(graph,net,v,{0,-1,0},gridCost,tmp,Bx))Q.push(u);//+col
+        if(u = Search(graph,net,v,{1,0,0},gridCost,tmp,Bx))Q.push(u);//+row
+        if(u = Search(graph,net,v,{-1,0,0},gridCost,tmp,Bx))Q.push(u);//-row
     }
 
     //std::cout<<"Step4\n";//Step 4
@@ -575,36 +532,37 @@ tree* Tree2Tree(Graph*graph,NetGrids*net,tree*t1,tree*t2)
 }
 
 
-//for maze routing
-node* search2(Graph*graph,NetGrids*net,node *v,const pos&delta,tree*tmp,std::unordered_map<std::string,bool>&mark,BoundingBox &Bx,
-std::queue<node*>&q2)
+
+node* search2(Graph*graph,NetGrids*net,node *v,const pos&delta,tree*tmp,std::unordered_map<std::string,bool>&mark,BoundingBox &Bx)
 {
-    int errorNum = 0;
-    if(!BoundaryCheck(graph,net,v,delta,Bx,&errorNum))
-    {   
-        if(errorNum==0)return nullptr;//error dir or graph bounding error or minlayer error
-        else{//Bounding box error
-            errorNum = -1;
-        }
-    }
+
+    auto t1 = std::chrono::high_resolution_clock::now();
+    if(!BoundaryCheck(graph,net,v,delta,Bx))return nullptr;
+    auto t2 = std::chrono::high_resolution_clock::now();
+
+
+
+
+    // std::cout<<"step6\n";
+    t1 = std::chrono::high_resolution_clock::now();
+
     pos P = {v->p.row+delta.row,v->p.col+delta.col,v->p.lay+delta.lay};
     Ggrid& g = (*graph)(P.row,P.col,P.lay);
     std::string &str = pos2str(P);
     if(mark.find(str)!=mark.end())return nullptr; //mark
     mark[str] = true;
+    t2 = std::chrono::high_resolution_clock::now();
+
+
+    t1 = std::chrono::high_resolution_clock::now();
     //Capacity checking
     if(!CapacityCheck(net,g))return nullptr;
     node * n = new node(P);
     tmp->addNode(n);
     v->connect(n);
+    t2 = std::chrono::high_resolution_clock::now();
 
-
-    if(!errorNum)
-        return n;
-    else{//-1
-        q2.push(n);
-        return nullptr;
-    }    
+    return n;
 }
 
 tree* MazeRouting(Graph*graph,NetGrids*net,node*n1,node*n2)
@@ -620,8 +578,7 @@ tree* MazeRouting(Graph*graph,NetGrids*net,node*n1,node*n2)
     // std::cout<<"step2\n";
 
     BoundingBox Bx(graph,&graph->getNet(net->NetId),n1,n2);
-    if(firstRout){Bx.initFlex(Bxflex);}
-    else{Bx.initFlex(3);}
+    
     // std::cout<<"step3\n";
 
     node *targetPoint = nullptr;
@@ -633,27 +590,27 @@ tree* MazeRouting(Graph*graph,NetGrids*net,node*n1,node*n2)
     std::unordered_map<std::string,bool>mark;mark.insert({pos2str(n1Copy->p),true});
 
     // std::cout<<"step4\n";
-    std::queue<node*>Q2;
-    while(Bx.loosen()&&!targetPoint&&!Q.empty()){
-        while(!Q.empty()&&!targetPoint)
+    auto t1 = std::chrono::high_resolution_clock::now();
+    while(!Q.empty()&&!targetPoint)
+    {
+        node * v = Q.front();Q.pop();
+       
+        if(isTarget(v,target))//find
         {
-            node * v = Q.front();Q.pop();
-        
-            if(isTarget(v,target))//find
-            {
-                targetPoint = v;
-                break;
-            }
-            node * u = nullptr;
-            if(u = search2(graph,net,v,{0,0,1},tmp,mark,Bx,Q2))Q.push(u); //up
-            if(u = search2(graph,net,v,{0,0,-1},tmp,mark,Bx,Q2))Q.push(u);//down
-            if(u = search2(graph,net,v,{0,1,0},tmp,mark,Bx,Q2))Q.push(u);//-col
-            if(u = search2(graph,net,v,{0,-1,0},tmp,mark,Bx,Q2))Q.push(u);//+col
-            if(u = search2(graph,net,v,{1,0,0},tmp,mark,Bx,Q2))Q.push(u);//+row
-            if(u = search2(graph,net,v,{-1,0,0},tmp,mark,Bx,Q2))Q.push(u);//-row
+            targetPoint = v;
+            break;
         }
-        Q = std::move(Q2);
+        node * u = nullptr;
+        if(u = search2(graph,net,v,{0,0,1},tmp,mark,Bx))Q.push(u); //up
+        if(u = search2(graph,net,v,{0,0,-1},tmp,mark,Bx))Q.push(u);//down
+        if(u = search2(graph,net,v,{0,1,0},tmp,mark,Bx))Q.push(u);//-col
+        if(u = search2(graph,net,v,{0,-1,0},tmp,mark,Bx))Q.push(u);//+col
+        if(u = search2(graph,net,v,{1,0,0},tmp,mark,Bx))Q.push(u);//+row
+        if(u = search2(graph,net,v,{-1,0,0},tmp,mark,Bx))Q.push(u);//-row
     }
+    auto t2 = std::chrono::high_resolution_clock::now();
+
+
 
     //std::cout<<"step5\n";
     if(targetPoint){
@@ -670,70 +627,24 @@ tree* MazeRouting(Graph*graph,NetGrids*net,node*n1,node*n2)
 }
 
 
-//for check those pinset : p1,p2 are in same layer which is both minLayer and maxLay of this graph.
-bool precheckTwoPins(Graph*graph,int NetId,TwoPinNets&twopins)
-{
-    int minLay = graph->getNet(NetId).minLayer;
-    if(graph->LayerNum()!=minLay)return true;//do not need check
 
-    bool canRout = true;
-    for(auto pins:twopins)
-    {
-        if(pins.first->routing_tree!=pins.second->routing_tree)//connect edge
-        {
-            int r1 = pins.first->p.row;
-            int r2 = pins.second->p.row;
-            int c1 = pins.first->p.col;
-            int c2 = pins.second->p.col;
-            int l1 = pins.first->p.lay;
-            int l2 = pins.second->p.lay;
-            if(l1==minLay&&l1==l2)//same layer connect edge
-            {
 
-                int delta_r = r1-r2;
-                int delta_c = c1-c2;
-                if(!delta_r&&!delta_c)//2d
-                {
-                    canRout = false;break;
-                }
-                else if(delta_r&&graph->getLay(l1).horizontal)//1d but not routing dir
-                {
-                    canRout = false;break;
-                }
-                else if(delta_c&&!graph->getLay(l1).horizontal)
-                {
-                    canRout = false;break;
-                }
-            }
-        }
-    }
-    return canRout;
-}
-
-extern bool t2t;
 std::pair<ReroutInfo,bool> Reroute(Graph*graph,int NetId,TwoPinNets&twopins,bool overflowMode)
 {
-
-    //preCheck  
-    bool canRout = precheckTwoPins(graph,NetId,twopins);
-
     //std::cout<<"init"<<"\n";
     NetGrids * netgrids = new NetGrids(NetId,overflowMode);
     int initdemand = TwoPinNetsInit(graph,netgrids,twopins);//Init
-   
+    //std::cout<<"ImitDmd =  "<<initdemand<<"\n";
 
-
-    
     tree*T= nullptr;
     //std::cout<<"TwopinNet!\n";
     for(auto pins:twopins)
     {   
-        if(initdemand!=-1&&canRout)
+        if(initdemand!=-1)
         {
-            if(!t2t)
-                T = MazeRouting(graph,netgrids,pins.first,pins.second);
-            else
-                T = Tree2Tree(graph,netgrids,pins.first->routing_tree,pins.second->routing_tree);
+            // T = MazeRouting(graph,netgrids,pins.first,pins.second);
+            // if(!T)
+            T = Tree2Tree(graph,netgrids,pins.first->routing_tree,pins.second->routing_tree);
         }
         if(!T) //把整個two-pin nets 繞線產生出來的tree全部collect成一棵回傳
         {
@@ -748,7 +659,7 @@ TwoPinNets twoPinsGen(Net&net,int defaultLayer)
 {
 
     int Lcstr = net.minLayer;
-    if(defaultLayer!=0&&defaultLayer>=Lcstr)
+    if(defaultLayer!=-1&&defaultLayer>=Lcstr)
     {
         net.minLayer = defaultLayer;
     }
