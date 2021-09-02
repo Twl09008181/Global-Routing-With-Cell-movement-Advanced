@@ -277,17 +277,22 @@ tree* getPath(Graph*graph,NetGrids*net,node*v,std::unordered_map<node*,bool>&t1P
 
 bool BoundaryCheck(Graph*graph,NetGrids*net,node *v,const pos&delta,BoundingBox &Bx)
 {
+    int maxRow,minRow,maxCol,minCol,maxLay,minLay;
+    Bx.getBound(maxRow,minRow,maxCol,minCol,maxLay,minLay);
     if(delta.row!=0&&v->p.lay%2==1){return false;}//error routing dir
     if(delta.col!=0&&v->p.lay%2==0){return false;}//error routing dir
 
     //Boundary checking
     pos P = {v->p.row+delta.row,v->p.col+delta.col,v->p.lay+delta.lay};
-    if(P.row<Bx._minRow||P.row>Bx._maxRow){return false;} //RowBound checking
-    if(P.col<Bx._minCol||P.col>Bx._maxCol){return false;} //ColBound checking
+    // if(P.row<Bx._minRow||P.row>Bx._maxRow){return false;} //RowBound checking
+    // if(P.col<Bx._minCol||P.col>Bx._maxCol){return false;} //ColBound checking
 
-    int minLayer = graph->getNet(net->NetId).minLayer;
-    if(P.lay<minLayer ||P.lay>graph->LayerNum()){return false;}//minLayer checking
+    // int minLayer = graph->getNet(net->NetId).minLayer;
+    // if(P.lay<minLayer ||P.lay>graph->LayerNum()){return false;}//minLayer checking
 
+    if(P.row<minRow||P.row>maxRow){return false;} //RowBound checking
+    if(P.col<minCol||P.col>maxCol){return false;} //ColBound checking
+    if(P.lay<minLay||P.lay>maxLay){return false;}
     return true;
 }
 
@@ -628,7 +633,7 @@ tree* MazeRouting(Graph*graph,NetGrids*net,node*n1,node*n2)
 
 
 
-
+extern bool t2t;
 std::pair<ReroutInfo,bool> Reroute(Graph*graph,int NetId,TwoPinNets&twopins,bool overflowMode)
 {
     //std::cout<<"init"<<"\n";
@@ -642,9 +647,11 @@ std::pair<ReroutInfo,bool> Reroute(Graph*graph,int NetId,TwoPinNets&twopins,bool
     {   
         if(initdemand!=-1)
         {
-            // T = MazeRouting(graph,netgrids,pins.first,pins.second);
+            if(!t2t)
+                T = MazeRouting(graph,netgrids,pins.first,pins.second);
             // if(!T)
-            T = Tree2Tree(graph,netgrids,pins.first->routing_tree,pins.second->routing_tree);
+            else
+                T = Tree2Tree(graph,netgrids,pins.first->routing_tree,pins.second->routing_tree);
         }
         if(!T) //把整個two-pin nets 繞線產生出來的tree全部collect成一棵回傳
         {

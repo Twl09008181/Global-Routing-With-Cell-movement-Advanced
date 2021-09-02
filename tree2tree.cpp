@@ -35,9 +35,13 @@ int overflowSolved;
 
 bool firstRout = true;
 int Bxflex;
+
+std::chrono::high_resolution_clock::time_point lastAcc;
+std::chrono::high_resolution_clock::time_point startTime;
 int main(int argc, char** argv)
 {
-    auto t1 = std::chrono::high_resolution_clock::now();
+    lastAcc  = std::chrono::high_resolution_clock::now();
+    auto startTime = std::chrono::high_resolution_clock::now();
     auto t2 = std::chrono::high_resolution_clock::now();
     readLUT();
     if(argc!=2){
@@ -52,35 +56,37 @@ int main(int argc, char** argv)
     origin = graph->score;
     
     //-------------------------------------first route-----------------------------------------
-    std::cout<<"enter Bxflex\n";
-    std::cin>>Bxflex;
+    // std::cout<<"enter Bxflex\n";
+    // std::cin>>Bxflex;
     auto netlist = getNetlist(graph);
+    t2t = true;
     Route(graph,netlist);
     t2 = std::chrono::high_resolution_clock::now();
-    std::chrono::duration<double,std::milli>FRT = t2-t1;;
+    std::chrono::duration<double,std::milli>FRT = t2-startTime;;
     firstRout = false;
     std::cout<<"first rout score:"<<origin-graph->score<<"  spend:  "<<FRT.count()/1000<<"s\n";
     //-------------------------------------first route-----------------------------------------
 
 
-    t2t = true;
+    t2t = false;//Maze routing
     // countdmd(graph);
     
-    int num = 3;
+    int num = 100;
     while(num--){
         RoutingWithCellMoving(graph);
         std::cout<<"move : score:"<<origin-graph->score<<"\n";
-        auto netlist = getNetlist(graph);
-        Route(graph,netlist);
-        std::cout<<"only rout score:"<<origin-graph->score<<"\n";
+        OutPut(graph,fileName);
+        t2 = std::chrono::high_resolution_clock::now();
+        std::chrono::duration<double, std::milli> t3(t2-startTime);
+        std::cout<<"time: "<<t3.count()/1000<<" s \n";
     }
     // // countdmd(graph);
-    OutPut(graph,fileName);
+    
 
     // std::cout<<"seed:"<<seed<<"\n";
     std::cout<<"final score:"<<origin-graph->score<<"\n";
     t2 = std::chrono::high_resolution_clock::now();
-    std::chrono::duration<double, std::milli> t3(t2-t1);
+    std::chrono::duration<double, std::milli> t3(t2-startTime);
     std::cout<<"total : "<<t3.count()/1000<<" s \n";
     std::cout<<"routing failed count:"<<failedCount<<"\n";
     std::cout<<"overflowSolved count:"<<overflowSolved<<"\n";

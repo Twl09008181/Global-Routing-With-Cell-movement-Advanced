@@ -15,7 +15,7 @@ bool RoutingSchedule(Graph*graph,int netid,std::vector<ReroutInfo>&infos,std::ve
     //-------------------------------------RipUP----------------------------------
     auto oldnet = graph->getNetGrids(netid);
     if(oldnet->isFixed()){
-        if(overflowNet){std::cout<<netid<<"already solved\n";delete *overflowNet;*overflowNet = nullptr;return true;}//overflow mode and fixed(it was already solved by other overflow net.)
+        if(overflowNet){delete *overflowNet;*overflowNet = nullptr;return true;}//overflow mode and fixed(it was already solved by other overflow net.)
         if(!oldnet->recover_mode)
             std::cerr<<"warning,net :"<<netid<<" is_fixed = true \n";
         return false; //can't Routing this net.
@@ -112,17 +112,17 @@ bool OverflowProcess(Graph*graph,NetGrids*overflownet,std::vector<ReroutInfo>&in
     //find top layer
     int toplay = 3;
     float rate = 1.0;
-    // for(int i = 1;i<=graph->LayerNum();i++)
-    // {
-    //     auto uti = graph->lay_uti(i);
-    //     float r = float(uti.first)/uti.second;
+    for(int i = 1;i<=graph->LayerNum();i++)
+    {
+        auto uti = graph->lay_uti(i);
+        float r = float(uti.first)/uti.second;
         
-    //     // if(r < rate-0.2)
-    //     // {
-    //     //     toplay = i;
-    //     //     rate = r;
-    //     // }
-    // }
+        if(r < rate-0.2)
+        {
+            toplay = i;
+            rate = r;
+        }
+    }
 
  
     //solving overflow
@@ -130,13 +130,14 @@ bool OverflowProcess(Graph*graph,NetGrids*overflownet,std::vector<ReroutInfo>&in
     int count = 0;
     int trylimit  = 20;
     std::vector<ReroutInfo>of_infos;std::vector<int>of_RipId;
+    float accScore = 0;
     while(!overflowGrids.empty()&&idx<netids.size()&&count<=trylimit)
     {
 
         int nid = netids.at(idx).first;idx++;
         auto net = graph->getNetGrids(nid);
         if(net->isFixed())continue;
-        if(net->passScore >= overflownet->passScore)continue;
+        if(accScore + net->passScore >= overflownet->passScore)continue;
         count++;
         net->recover_mode = true;
         if(RoutingSchedule(graph,nid,of_infos,of_RipId,toplay))//using recover mode
@@ -145,6 +146,7 @@ bool OverflowProcess(Graph*graph,NetGrids*overflownet,std::vector<ReroutInfo>&in
             {
                 overflowGrids.erase(g);
             }
+            accScore += of_infos.back().netgrids->passScore - graph->getNetGrids(nid)->passScore;
         }
     }
 
@@ -313,6 +315,8 @@ void BatchRoute(Graph*graph,std::vector<netinfo>&netlist,int start,int _end,rout
 
 extern float origin;
 extern bool t2t;
+extern std::chrono::high_resolution_clock::time_point lastAcc;
+extern std::chrono::high_resolution_clock::time_point startTime;
 // //Route All Accept or Reject
 void RouteAAoR(Graph*graph,std::vector<netinfo>&netlist,CellInst*movCell)
 {
@@ -333,7 +337,6 @@ void RouteAAoR(Graph*graph,std::vector<netinfo>&netlist,CellInst*movCell)
     infos.reserve(netlist.size());RipId.reserve(netlist.size());
     
     std::vector<int>failed;
-    auto t1 = std::chrono::high_resolution_clock::now();
     // t2t = true;
     for(int j = 0;j<netlist.size();j++){
         int nid = netlist.at(j).netId;
@@ -366,9 +369,12 @@ void RouteAAoR(Graph*graph,std::vector<netinfo>&netlist,CellInst*movCell)
             movCell->originalCol = movCell->col;
         }
         auto t2 = std::chrono::high_resolution_clock::now();
-        std::chrono::duration<double, std::milli> dur = t2-t1;
-        if(dur.count()/1000>30)
-        std::cout<<"score:"<<origin - graph->score<<"\n";
+        std::chrono::duration<double, std::milli> dur = t2-lastAcc;
+        if(dur.count()/1000>30){
+            dur = t2-startTime;
+            std::cout<<"time:"<<dur.count()/1000<<"s score:"<<origin - graph->score<<"\n";
+            lastAcc = t2;
+        }
     }else{
         if(movCell)
         {
@@ -400,8 +406,6 @@ void Route(Graph*graph,std::vector<netinfo>&netlist)
    
 
     // t2t = true;
-    auto t1 = std::chrono::high_resolution_clock::now();
-    
     for(int j = 0;j<netlist.size();j++){
         int nid = netlist.at(j).netId;
         // std::cout<<nid<<"\n";
@@ -417,11 +421,12 @@ void Route(Graph*graph,std::vector<netinfo>&netlist)
                 Accept(graph,infos);
                 sc = graph->score;AcceptCount++;
                 auto t2 = std::chrono::high_resolution_clock::now();
-                std::chrono::duration<double, std::milli> dur;
-                dur = t2-t1;
+                std::chrono::duration<double, std::milli> dur = t2-lastAcc;
+                
                 if(dur.count()/1000>60){
-                    std::cout<<"score:"<<origin - graph->score<<"\n";
-                    t1 = std::chrono::high_resolution_clock::now();
+                    dur = t2-startTime;
+                    std::cout<<"time : "<<dur.count()/1000<<"s score:"<<origin - graph->score<<"\n";
+                    lastAcc = t2;
                 }
             }
             else{
@@ -434,6 +439,7 @@ void Route(Graph*graph,std::vector<netinfo>&netlist)
     // t2t = false;
     for(auto nid:failed)
     {
+        
         if(overFlowRouting(graph,nid,infos,RipId))
         {
             if(graph->score < sc){

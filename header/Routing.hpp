@@ -217,7 +217,7 @@ struct ReroutInfo{
 std::pair<ReroutInfo,bool> Reroute(Graph*graph,int NetId,TwoPinNets&twopins,bool overflowMode=false);
 
 
-
+#include <climits>
 struct BoundingBox
 {
     BoundingBox() = default;
@@ -245,15 +245,8 @@ struct BoundingBox
         _minRow = min(n1->p.row,n2->p.row);
         _maxRow = max(n1->p.row,n2->p.row);
      
-        if(n2->p.lay!=-1)
-            _minLay = min(n1->p.lay,n2->p.lay);
-        else
-            _minLay = n1->p.lay;
-
-        if(n2->p.lay!=-1)
-            _maxLay = max(n1->p.lay,n2->p.lay);
-        else
-            _maxLay = n1->p.lay;
+        _minLay = LayBound.first;
+        _maxLay = LayBound.second;
     }
     BoundingBox(Graph*graph,Net*net,tree*t1,tree*t2)
     {
@@ -261,12 +254,32 @@ struct BoundingBox
         ColBound = graph->ColBound();
         LayBound.first = net->minLayer;
         LayBound.second = graph->LayerNum();
-        _minCol = min(t1->EndPoint.at(0)->col,t2->EndPoint.at(0)->col);
-        _maxCol = max(t1->EndPoint.at(1)->col,t2->EndPoint.at(1)->col);
-        _minRow = min(t1->EndPoint.at(2)->row,t2->EndPoint.at(2)->row);
-        _maxRow = max(t1->EndPoint.at(3)->row,t2->EndPoint.at(3)->row);
-        _minLay = min(t1->EndPoint.at(4)->lay,t2->EndPoint.at(4)->lay);
-        _maxLay = max(t1->EndPoint.at(5)->lay,t2->EndPoint.at(5)->lay);
+        //改成兩者之間最近的兩個點
+        int dist = INT_MAX;
+        node*_n1 = nullptr;
+        node*_n2 = nullptr;
+        for(auto n1:t1->all)
+        {
+            for(auto n2:t2->all)
+            {
+                int d_r = (n1->p.row-n2->p.row);
+                int d_c = (n1->p.col-n2->p.col);
+                if(d_r*d_r+d_c*d_c < dist)
+                {
+                    dist = d_r*d_r+d_c*d_c;
+                    _n1 = n1;
+                    _n2 = n2;
+                }
+            }
+        }
+        _minCol = min(_n1->p.col,_n2->p.col);
+        _maxCol = max(_n1->p.col,_n2->p.col);
+        _minRow = min(_n1->p.row,_n2->p.row);
+        _maxRow = max(_n1->p.row,_n2->p.row);
+
+
+        _minLay = LayBound.first;
+        _maxLay = LayBound.second;
     }
     BoundingBox(Graph*graph,Net*net,tree*t1,node*n2)
     {
@@ -275,19 +288,25 @@ struct BoundingBox
         LayBound.first = net->minLayer;
         LayBound.second = graph->LayerNum();
         
-        _minCol = min(t1->EndPoint.at(0)->col,n2->p.col);
-        _maxCol = max(t1->EndPoint.at(1)->col,n2->p.col);
-        _minRow = min(t1->EndPoint.at(2)->row,n2->p.row);
-        _maxRow = max(t1->EndPoint.at(3)->row,n2->p.row);
-       
-        if(n2->p.lay!=-1){
-            _minLay = min(t1->EndPoint.at(4)->lay,n2->p.lay);
-            _maxLay = max(t1->EndPoint.at(5)->lay,n2->p.lay);
+        int dist = INT_MAX;
+        node*_n1 = nullptr;
+        for(auto n1:t1->all)
+        {
+            int d_r = (n1->p.row-n2->p.row);
+            int d_c = (n1->p.col-n2->p.col);
+            if(d_r*d_r+d_c*d_c < dist)
+            {
+                dist = d_r*d_r+d_c*d_c;
+                _n1 = n1;
+            }
         }
-        else{
-            _minLay = t1->EndPoint.at(4)->lay;
-            _maxLay = t1->EndPoint.at(5)->lay;
-        }
+        _minCol = min(_n1->p.col,n2->p.col);
+        _maxCol = max(_n1->p.col,n2->p.col);
+        _minRow = min(_n1->p.row,n2->p.row);
+        _maxRow = max(_n1->p.row,n2->p.row);
+
+        _minLay = LayBound.first;
+        _maxLay = LayBound.second;
     }
     void getBound(int &maxRow,int &minRow,int &maxCol,int &minCol,int &maxLay,int &minLay)
     {
@@ -325,13 +344,12 @@ struct BoundingBox
         if(_maxRow+flexCol > RowBound.second){flexRow = RowBound.second - _maxRow;}
         if(_minLay-flexLay < LayBound.first){flexLay = _minLay-LayBound.first;}
         if(_maxLay+flexLay > LayBound.second){flexLay = LayBound.second - _maxLay;}
-
     }
     std::pair<int,int>RowBound;
     std::pair<int,int>ColBound;
     std::pair<int,int>LayBound;
     int _minCol,_maxCol,_minRow,_maxRow,_minLay,_maxLay;
-    int flexRow = 3,flexCol = 3,flexLay = 3;
+    int flexRow = 0,flexCol = 0,flexLay = 0;
     bool init = false;
 };
 
