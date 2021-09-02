@@ -351,7 +351,7 @@ void RouteAAoR(Graph*graph,std::vector<netinfo>&netlist,CellInst*movCell)
     for(auto nid:failed)
     {
         graph->getNetGrids(nid)->recover_mode = true;
-        if(!RoutingSchedule(graph,nid,infos,RipId))
+        if(!overFlowRouting(graph,nid,infos,RipId))
         {
             success = false;
             break;
@@ -367,14 +367,16 @@ void RouteAAoR(Graph*graph,std::vector<netinfo>&netlist,CellInst*movCell)
             movCell->originalRow = movCell->row;
             movCell->originalCol = movCell->col;
         }
-
+    
     }else{
-        Reject(graph,infos,RipId);
-        if(movCell){
+        if(movCell)
+        {
             graph->removeCellsBlkg(movCell);
-            Reject(graph,infos,RipId);
             movCell->row = movCell->originalRow;
             movCell->col = movCell->originalCol;
+        }
+        Reject(graph,infos,RipId);
+        if(movCell){
             graph->insertCellsBlkg(movCell);
         }
     }
