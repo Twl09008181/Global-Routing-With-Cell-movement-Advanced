@@ -11,7 +11,7 @@ Graph* graph = nullptr;
 
 
 void Init( std::string path,std::string fileName){graph = new Graph(path+fileName);}
-void OutPut(Graph*graph,std::string fileName,const std::vector<std::string>&MovingCell);
+void OutPut(Graph*graph,std::string fileName);
 // void OnlyRouting(Graph*graph,int batchSize = 1,bool overflow = false,float topPercent = 0);
 void RoutingWithCellMoving(Graph*graph);
 
@@ -27,7 +27,7 @@ std::chrono::duration<double,std::milli>collectTime;
 table strtable;
 float origin;
 
-bool t2t =true;//---------------------------------------t2t or mz-------------------------------------
+bool t2t =false;//---------------------------------------t2t or mz-------------------------------------
 int failedCount;
 int RejectCount;
 int AcceptCount;
@@ -55,7 +55,7 @@ int main(int argc, char** argv)
  
     t2t = true;
     // countdmd(graph);
-    int num = 10;
+    int num = 3;
     while(num--){
         RoutingWithCellMoving(graph);
         std::cout<<"move : score:"<<origin-graph->score<<"\n";
@@ -64,7 +64,7 @@ int main(int argc, char** argv)
         std::cout<<"only rout score:"<<origin-graph->score<<"\n";
     }
     // // countdmd(graph);
-    
+    OutPut(graph,fileName);
 
     // std::cout<<"seed:"<<seed<<"\n";
     std::cout<<"final score:"<<origin-graph->score<<"\n";

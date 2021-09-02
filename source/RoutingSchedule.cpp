@@ -110,9 +110,9 @@ bool OverflowProcess(Graph*graph,NetGrids*overflownet,std::vector<ReroutInfo>&in
 
 
     //find top layer
-    int toplay = 1;
+    int toplay = 3;
     float rate = 1.0;
-    for(int i = 2;i<=graph->LayerNum();i++)
+    for(int i = 3;i<=graph->LayerNum();i++)
     {
         auto uti = graph->lay_uti(i);
         float r = float(uti.first)/uti.second;
@@ -151,6 +151,10 @@ bool OverflowProcess(Graph*graph,NetGrids*overflownet,std::vector<ReroutInfo>&in
     
     if(!overflowGrids.empty())//solving failed --- recover the success net
     {
+        for(auto nid:of_RipId)
+        {
+            graph->getNetGrids(nid)->recover_mode = true;
+        }
         Reject(graph,of_infos,of_RipId);
     }else{//solving success
         for(auto info:of_infos)
@@ -176,9 +180,8 @@ bool overFlowRouting(Graph*graph,int Netid,std::vector<ReroutInfo>&infos,std::ve
             return false;  //bounding box limit.
         }
         auto oldnet = graph->getNetGrids(Netid);
-   
+
         RipUpNet(graph,oldnet);
-  
         AddingNet(graph,overflowNet->netgrids);//force add
         
         auto t1 = std::chrono::high_resolution_clock::now();
@@ -315,6 +318,16 @@ extern bool t2t;
 // //Route All Accept or Reject
 void RouteAAoR(Graph*graph,std::vector<netinfo>&netlist,CellInst*movCell)
 {
+    std::vector<int>blkgLayer;
+    for(auto b:movCell->mCell->blkgs){blkgLayer.push_back(b.second.first);}
+    //blkgLayer must check again , because blkg metal is different from net pin metal 
+    //so net pin all success can't guarantee the overflow caused by blkg is solved.
+    auto blkgCheck = [](Graph*graph,CellInst*movCell,std::vector<int>&blkgLayer)
+    {
+        for(auto l:blkgLayer)
+            if((*graph)(movCell->row,movCell->col,l).is_overflow())return false;
+        return true;
+    };
 
     float sc = graph->score;
     std::vector<ReroutInfo>infos;
@@ -322,9 +335,11 @@ void RouteAAoR(Graph*graph,std::vector<netinfo>&netlist,CellInst*movCell)
     infos.reserve(netlist.size());RipId.reserve(netlist.size());
     
     std::vector<int>failed;
+    
     // t2t = true;
     for(int j = 0;j<netlist.size();j++){
         int nid = netlist.at(j).netId;
+        graph->getNetGrids(nid)->recover_mode = true;
         if(!RoutingSchedule(graph,nid,infos,RipId))
         {
             failed.push_back(nid);
@@ -335,14 +350,16 @@ void RouteAAoR(Graph*graph,std::vector<netinfo>&netlist,CellInst*movCell)
     // t2t = false;
     for(auto nid:failed)
     {
-        if(!overFlowRouting(graph,nid,infos,RipId))
+        graph->getNetGrids(nid)->recover_mode = true;
+        if(!RoutingSchedule(graph,nid,infos,RipId))
         {
             success = false;
             break;
         }
     }
     
-    if(success&&(graph->score < sc)){
+    if(blkgCheck(graph,movCell,blkgLayer)&&success&&(graph->score < sc)){
+    // if(success&&(graph->score < sc)){
         Accept(graph,infos);
         sc = graph->score;
         if(movCell)

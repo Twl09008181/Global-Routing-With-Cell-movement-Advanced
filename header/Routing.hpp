@@ -306,7 +306,7 @@ struct BoundingBox
         if(_maxCol+flexCol<ColBound.second){flexCol++;update=true;}
         if(_minRow-flexRow>RowBound.first){flexRow++;update=true;}
         if(_maxRow+flexCol<RowBound.second){flexRow++;update=true;}
-        if(_minLay-flexLay<LayBound.first){flexLay++;update=true;}
+        if(_minLay-flexLay>LayBound.first){flexLay++;update=true;}
         if(_maxLay+flexLay<LayBound.second){flexLay++;update=true;}
         
      

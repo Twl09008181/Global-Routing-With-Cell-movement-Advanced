@@ -351,7 +351,7 @@ std::pair<std::string,CellInst*> Graph::cellMoving(){
 		if(validMovement(cell, curRow, curCol)){
 			cell->row = curRow;
 			cell->col = curCol;
-            if(!insertCellsBlkg(cell)){
+            if(!insertCellsBlkg(cell,true)){
 				//removeCellsBlkg(cell);
 				cell->row = cell->originalRow;
 				cell->col = cell->originalCol;
@@ -568,7 +568,7 @@ bool Graph::removeCellsBlkg(CellInst* cell){
 }
 
 
-bool Graph::insertCellsBlkg(CellInst* cell){
+bool Graph::insertCellsBlkg(CellInst* cell,bool nocheck){
 	
 	std::vector<std::pair<Ggrid*,int>>blkgRecord;
 	bool canadd = true;
@@ -577,12 +577,12 @@ bool Graph::insertCellsBlkg(CellInst* cell){
 		const auto& blkg = p.second;
 		
 		auto& grid = (*this)(cell->row, cell->col, blkg.first);
-        if(grid.get_remaining() < blkg.second){
+        if(!nocheck&& grid.get_remaining() < blkg.second){
 			canadd = false;
 			break;
 		}
 		blkgRecord.push_back({&grid,blkg.second});
-		grid.add_demand(blkg.second);
+		grid.add_demand(blkg.second,0,nocheck);
 	}
 	if(!canadd)
 	{

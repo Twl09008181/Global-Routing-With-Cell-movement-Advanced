@@ -97,7 +97,7 @@ public:
 	void placementInit();
 	void placementInit_Swap();
     bool removeCellsBlkg(CellInst* cell);
-    bool insertCellsBlkg(CellInst* cell);
+    bool insertCellsBlkg(CellInst* cell,bool nocheck = false);
 
 	double congest_value(int, int, int);
 	void show_cell_pos();

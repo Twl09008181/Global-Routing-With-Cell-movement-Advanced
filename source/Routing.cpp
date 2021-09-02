@@ -27,7 +27,7 @@ bool passing(Ggrid*grid,NetGrids*net)
     if(net->AlreadyPass(grid))
         return true;
     else{
-        bool noCheck = net->overflow_mode||net->recover_mode;
+        bool noCheck = net->overflow_mode;
         if(grid->get_remaining()||noCheck){
             if(net->overflow_mode)
                 net->overflow();
@@ -162,17 +162,6 @@ float AddingNet(Graph*graph,NetGrids*net)
             else{
                 std::cerr<<"AddingNet error net:"<<net->NetId<<"\n";
                 exit(1);
-                // PrintAll(graph);
-                // for(auto n:graph->Nets)
-                // {
-                //     std::cout<<"N"<<n.first<<"\n";
-                //     for(auto g:n.second->net_pins)
-                //     {
-                //         std::cout<<g.first->name<<" "<<g.first->row<<" "<<g.first->col<<" "<<g.first->mCell->pins[g.second]<<"\n";
-                //     }
-                // }
-
-                // exit(1);
             }
         }
     }
