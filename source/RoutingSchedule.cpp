@@ -283,10 +283,9 @@ bool change_state(int cost1,int cost2,float temperature)
     return x < std::exp(-delta_cost/temperature);//t越小,exp值越小,越不可能跳,delta越大,越不可能跳
 }
 
-extern int failedCount;
+
 extern int RejectCount;
 extern int AcceptCount;
-extern int overflowSolved;
 //BatchRoute
 void BatchRoute(Graph*graph,std::vector<netinfo>&netlist,int start,int _end,routing_callback _callback,int batchsize,int default_layer)
 {
@@ -439,7 +438,6 @@ void Route(Graph*graph,std::vector<netinfo>&netlist)
     // t2t = false;
     for(auto nid:failed)
     {
-        
         if(overFlowRouting(graph,nid,infos,RipId))
         {
             if(graph->score < sc){
@@ -449,11 +447,6 @@ void Route(Graph*graph,std::vector<netinfo>&netlist)
             else{
                 Reject(graph,infos,RipId);RejectCount++;
             }
-            overflowSolved++;
         }
-        else{
-            failedCount++;
-        }
-
     }
 }

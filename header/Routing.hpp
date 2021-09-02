@@ -314,42 +314,29 @@ struct BoundingBox
         maxCol = min(_maxCol+flexCol,ColBound.second);
         minRow = max(_minRow-flexRow,RowBound.first);
         maxRow = min(_maxRow+flexRow,RowBound.second);
-        minLay = max(_minLay-flexLay,LayBound.first);
-        maxLay = min(_maxLay+flexLay,LayBound.second);
+        minLay = LayBound.first;
+        maxLay = LayBound.second;
     }
     bool loosen()
     {
+        if(updateTime>3)return false;//max
+
         bool update = false;
         if(!init){init = true;return true;}
         if(_minCol-flexCol>ColBound.first){flexCol++;update=true;}
         if(_maxCol+flexCol<ColBound.second){flexCol++;update=true;}
         if(_minRow-flexRow>RowBound.first){flexRow++;update=true;}
         if(_maxRow+flexCol<RowBound.second){flexRow++;update=true;}
-        if(_minLay-flexLay>LayBound.first){flexLay++;update=true;}
-        if(_maxLay+flexLay<LayBound.second){flexLay++;update=true;}
-        
-     
-        return update;
-    }
-    void initFlex(int flex = 3)
-    {
-        flexRow = flex;
-        flexCol = flex;
-        flexLay = flex;
 
-        //tune
-        if(_minCol-flexCol < ColBound.first){flexCol = _minCol-ColBound.first;}
-        if(_maxCol+flexCol > ColBound.second){flexCol = ColBound.second-_maxCol;}
-        if(_minRow-flexRow < RowBound.first){flexRow = _minRow-RowBound.first;}
-        if(_maxRow+flexCol > RowBound.second){flexRow = RowBound.second - _maxRow;}
-        if(_minLay-flexLay < LayBound.first){flexLay = _minLay-LayBound.first;}
-        if(_maxLay+flexLay > LayBound.second){flexLay = LayBound.second - _maxLay;}
+        if(update){updateTime++;}
+        return update;
     }
     std::pair<int,int>RowBound;
     std::pair<int,int>ColBound;
     std::pair<int,int>LayBound;
     int _minCol,_maxCol,_minRow,_maxRow,_minLay,_maxLay;
-    int flexRow = 0,flexCol = 0,flexLay = 0;
+    int flexRow = 0,flexCol = 0;
+    int updateTime = 0;
     bool init = false;
 };
 

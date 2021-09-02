@@ -41,63 +41,48 @@ std::chrono::high_resolution_clock::time_point startTime;
 int main(int argc, char** argv)
 {
     lastAcc  = std::chrono::high_resolution_clock::now();
-    auto startTime = std::chrono::high_resolution_clock::now();
-    auto t2 = std::chrono::high_resolution_clock::now();
-    readLUT();
+    startTime = std::chrono::high_resolution_clock::now();
+
     if(argc!=2){
         std::cerr<<"Wrong parameters!"<<std::endl;
         return -1;
     }
     std::string path = "./benchmark/";
     std::string fileName = argv[1];
-    
+
+    //---------------------------------------init-----------------------------------------------
+    readLUT();
     Init(path,fileName);    
     strtable.init(graph);
     origin = graph->score;
     
     //-------------------------------------first route-----------------------------------------
-    // std::cout<<"enter Bxflex\n";
-    // std::cin>>Bxflex;
     auto netlist = getNetlist(graph);
-    t2t = true;
+    t2t = true;//using t2t mode
     Route(graph,netlist);
-    t2 = std::chrono::high_resolution_clock::now();
-    std::chrono::duration<double,std::milli>FRT = t2-startTime;;
+    OutPut(graph,fileName);
+    lastAcc = std::chrono::high_resolution_clock::now();
+    std::chrono::duration<double,std::milli>FRT = lastAcc-startTime;;
     firstRout = false;
     std::cout<<"first rout score:"<<origin-graph->score<<"  spend:  "<<FRT.count()/1000<<"s\n";
     //-------------------------------------first route-----------------------------------------
 
 
     t2t = false;//Maze routing
-    // countdmd(graph);
-    
     int num = 100;
     while(num--){
         RoutingWithCellMoving(graph);
         std::cout<<"move : score:"<<origin-graph->score<<"\n";
         OutPut(graph,fileName);
-        t2 = std::chrono::high_resolution_clock::now();
-        std::chrono::duration<double, std::milli> t3(t2-startTime);
-        std::cout<<"time: "<<t3.count()/1000<<" s \n";
+        lastAcc = std::chrono::high_resolution_clock::now();
+        std::chrono::duration<double, std::milli> dur(lastAcc-startTime);
+        std::cout<<"time: "<<dur.count()/1000<<" s \n";
     }
-    // // countdmd(graph);
     
-
-    // std::cout<<"seed:"<<seed<<"\n";
     std::cout<<"final score:"<<origin-graph->score<<"\n";
-    t2 = std::chrono::high_resolution_clock::now();
-    std::chrono::duration<double, std::milli> t3(t2-startTime);
-    std::cout<<"total : "<<t3.count()/1000<<" s \n";
-    std::cout<<"routing failed count:"<<failedCount<<"\n";
-    std::cout<<"overflowSolved count:"<<overflowSolved<<"\n";
-    std::cout<<"Accept rate:"<<100*float(AcceptCount)/(AcceptCount+RejectCount)<<"%\n";
+    // std::cout<<"Accept rate:"<<100*float(AcceptCount)/(AcceptCount+RejectCount)<<"%\n";
 
-    std::cout<<"Routing time:"<<RoutingTime.count()/1000<<"s\n";
-    // std::cout<<"pins time:"<<pinsTime.count()/1000<<"s\n";
-    // std::cout<<"final score:"<<origin-graph->score<<"\n";
     delete graph;
-    
-
 	return 0;
 }
 
