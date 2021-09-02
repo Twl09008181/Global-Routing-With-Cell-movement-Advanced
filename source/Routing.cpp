@@ -504,7 +504,8 @@ bool isTarget(node *v,std::unordered_map<std::string,node*>&target)
     }
     return false;
 }
-
+extern bool firstRout;
+extern int Bxflex;
 tree* Tree2Tree(Graph*graph,NetGrids*net,tree*t1,tree*t2)
 {
     if(t1==t2)return t1;//precheck
@@ -533,9 +534,11 @@ tree* Tree2Tree(Graph*graph,NetGrids*net,tree*t1,tree*t2)
             Bx = BoundingBox (graph,&graph->getNet(net->NetId),t1,t2);
         }
     }
+    if(firstRout){Bx.initFlex(Bxflex);}
+    else{Bx.initFlex(3);}
     std::priority_queue<node*,std::vector<node*>,minCost>Q2;
     node *targetPoint = nullptr;
-    while(Bx.loosen()&&sourceInit&&!targetPoint){
+    while(Bx.loosen()&&sourceInit&&!targetPoint&&!Q.empty()){
 
         while(!Q.empty()&&!targetPoint&&sourceInit)
         {
@@ -566,10 +569,6 @@ tree* Tree2Tree(Graph*graph,NetGrids*net,tree*t1,tree*t2)
         return t1;
     }
     else {
-        // if(net->NetId==3)
-        // {
-        //     std::cout<<"3 failed\n";
-        // }
         delete tmp;
         return nullptr;
     }
@@ -621,7 +620,8 @@ tree* MazeRouting(Graph*graph,NetGrids*net,node*n1,node*n2)
     // std::cout<<"step2\n";
 
     BoundingBox Bx(graph,&graph->getNet(net->NetId),n1,n2);
-    
+    if(firstRout){Bx.initFlex(Bxflex);}
+    else{Bx.initFlex(3);}
     // std::cout<<"step3\n";
 
     node *targetPoint = nullptr;
@@ -634,7 +634,7 @@ tree* MazeRouting(Graph*graph,NetGrids*net,node*n1,node*n2)
 
     // std::cout<<"step4\n";
     std::queue<node*>Q2;
-    while(Bx.loosen()&&!targetPoint){
+    while(Bx.loosen()&&!targetPoint&&!Q.empty()){
         while(!Q.empty()&&!targetPoint)
         {
             node * v = Q.front();Q.pop();

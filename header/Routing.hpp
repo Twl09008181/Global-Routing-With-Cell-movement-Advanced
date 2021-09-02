@@ -312,11 +312,26 @@ struct BoundingBox
      
         return update;
     }
+    void initFlex(int flex = 3)
+    {
+        flexRow = flex;
+        flexCol = flex;
+        flexLay = flex;
+
+        //tune
+        if(_minCol-flexCol < ColBound.first){flexCol = _minCol-ColBound.first;}
+        if(_maxCol+flexCol > ColBound.second){flexCol = ColBound.second-_maxCol;}
+        if(_minRow-flexRow < RowBound.first){flexRow = _minRow-RowBound.first;}
+        if(_maxRow+flexCol > RowBound.second){flexRow = RowBound.second - _maxRow;}
+        if(_minLay-flexLay < LayBound.first){flexLay = _minLay-LayBound.first;}
+        if(_maxLay+flexLay > LayBound.second){flexLay = LayBound.second - _maxLay;}
+
+    }
     std::pair<int,int>RowBound;
     std::pair<int,int>ColBound;
     std::pair<int,int>LayBound;
     int _minCol,_maxCol,_minRow,_maxRow,_minLay,_maxLay;
-    int flexRow = 1,flexCol = 1,flexLay = 1;
+    int flexRow = 3,flexCol = 3,flexLay = 3;
     bool init = false;
 };
 

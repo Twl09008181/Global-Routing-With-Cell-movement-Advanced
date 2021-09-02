@@ -27,11 +27,14 @@ std::chrono::duration<double,std::milli>collectTime;
 table strtable;
 float origin;
 
-bool t2t =false;//---------------------------------------t2t or mz-------------------------------------
+bool t2t = true;//---------------------------------------t2t or mz-------------------------------------
 int failedCount;
 int RejectCount;
 int AcceptCount;
 int overflowSolved;
+
+bool firstRout = true;
+int Bxflex;
 int main(int argc, char** argv)
 {
     auto t1 = std::chrono::high_resolution_clock::now();
@@ -48,13 +51,21 @@ int main(int argc, char** argv)
     strtable.init(graph);
     origin = graph->score;
     
-
+    //-------------------------------------first route-----------------------------------------
+    std::cout<<"enter Bxflex\n";
+    std::cin>>Bxflex;
     auto netlist = getNetlist(graph);
     Route(graph,netlist);
-    std::cout<<"only rout score:"<<origin-graph->score<<"\n";
- 
+    t2 = std::chrono::high_resolution_clock::now();
+    std::chrono::duration<double,std::milli>FRT = t2-t1;;
+    firstRout = false;
+    std::cout<<"first rout score:"<<origin-graph->score<<"  spend:  "<<FRT.count()/1000<<"s\n";
+    //-------------------------------------first route-----------------------------------------
+
+
     t2t = true;
     // countdmd(graph);
+    
     int num = 3;
     while(num--){
         RoutingWithCellMoving(graph);
