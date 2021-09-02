@@ -151,10 +151,7 @@ bool OverflowProcess(Graph*graph,NetGrids*overflownet,std::vector<ReroutInfo>&in
     
     if(!overflowGrids.empty())//solving failed --- recover the success net
     {
-        for(auto nid:of_RipId)
-        {
-            graph->getNetGrids(nid)->recover_mode = true;
-        }
+        for(auto nid:of_RipId){graph->getNetGrids(nid)->recover_mode = true;}//-------------------new
         Reject(graph,of_infos,of_RipId);
     }else{//solving success
         for(auto info:of_infos)
@@ -187,8 +184,9 @@ bool overFlowRouting(Graph*graph,int Netid,std::vector<ReroutInfo>&infos,std::ve
         auto t1 = std::chrono::high_resolution_clock::now();
         if(!OverflowProcess(graph,overflowNet->netgrids,infos,RipId))//failed
         {
-    
+
             RipUpNet(graph,overflowNet->netgrids);
+            graph->getNetGrids(Netid)->recover_mode = true;//------------------------new
             AddingNet(graph,graph->getNetGrids(Netid));
             oldnet->set_fixed(false);
             delete overflowNet->netgrids;
