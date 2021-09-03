@@ -275,14 +275,6 @@ std::vector<netinfo> getNetlist(Graph*graph)//sort by  wl - hpwl
 #include <stdlib.h>
 #include <time.h>
 
-bool change_state(int cost1,int cost2,float temperature)
-{
-    srand( time(NULL) );
-    double x = (double) rand() / (RAND_MAX + 1.0);
-    int delta_cost = cost2-cost1;
-   
-    return x < std::exp(-delta_cost/temperature);//t越小,exp值越小,越不可能跳,delta越大,越不可能跳
-}
 
 
 extern int RejectCount;
@@ -292,13 +284,13 @@ extern int AcceptCount;
 
 
 
-
+extern float temperature;
 extern float origin;
 extern bool t2t;
 extern std::chrono::high_resolution_clock::time_point lastAcc;
 extern std::chrono::high_resolution_clock::time_point startTime;
 // //Route All Accept or Reject
-void RouteAAoR(Graph*graph,std::vector<netinfo>&netlist,CellInst*movCell,bool recover)
+bool RouteAAoR(Graph*graph,std::vector<netinfo>&netlist,CellInst*movCell,bool recover)
 {
     std::vector<int>blkgLayer;
     for(auto b:movCell->mCell->blkgs){blkgLayer.push_back(b.second.first);}
@@ -324,7 +316,7 @@ void RouteAAoR(Graph*graph,std::vector<netinfo>&netlist,CellInst*movCell,bool re
         
         //new-----------------------------------------------------------------------------
 
-        if(!RoutingSchedule(graph,nid,infos,RipId,0,nullptr,recover))
+        if(!RoutingSchedule(graph,nid,infos,RipId))
         {
             failed.push_back(nid);
         }
@@ -355,9 +347,7 @@ void RouteAAoR(Graph*graph,std::vector<netinfo>&netlist,CellInst*movCell,bool re
         AddingNet(graph,net);
     }
     //---------------------new-----------------------------
-    
-    if(blkgCheck(graph,movCell,blkgLayer)&&success&&(graph->score < sc)){
-    // if(success&&(graph->score < sc)){
+    if(blkgCheck(graph,movCell,blkgLayer)&&success&&(graph->score < sc || change_state(sc,graph->score,temperature))){
         Accept(graph,infos);
         sc = graph->score;
         if(movCell)
@@ -384,6 +374,8 @@ void RouteAAoR(Graph*graph,std::vector<netinfo>&netlist,CellInst*movCell,bool re
             graph->insertCellsBlkg(movCell);
         }
     }
+
+    return success;
 }
 
 
@@ -414,7 +406,7 @@ void Route(Graph*graph,std::vector<netinfo>&netlist)
             
         }
         else{
-            if(graph->score < sc){
+            if((graph->score < sc || change_state(sc,graph->score,temperature))){
                 Accept(graph,infos);
                 sc = graph->score;AcceptCount++;
                 auto t2 = std::chrono::high_resolution_clock::now();

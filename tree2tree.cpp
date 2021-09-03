@@ -26,7 +26,8 @@ std::chrono::duration<double,std::milli>collectTime;
 
 table strtable;
 float origin;
-
+int TP,TN,FP,FN;
+float TPs,TNs,FPs,FNs;
 bool t2t = true;//---------------------------------------t2t or mz-------------------------------------
 int failedCount;
 int RejectCount;
@@ -35,6 +36,9 @@ int overflowSolved;
 
 bool firstRout = true;
 int Bxflex;
+
+double temperature = FLT_MAX;
+double temperature2 = 1;
 
 std::chrono::high_resolution_clock::time_point lastAcc;
 std::chrono::high_resolution_clock::time_point startTime;
@@ -69,21 +73,22 @@ int main(int argc, char** argv)
 
 
     t2t = false;//Maze routing
-    int num = 100;
+    int num = 10000;
     while(num--){
         RoutingWithCellMoving(graph);
         std::cout<<"move : score:"<<origin-graph->score<<"\n";
         auto netlist = getNetlist(graph);
-        Route(graph,netlist);
-        OutPut(graph,fileName);
+        // Route(graph,netlist);
+        // OutPut(graph,fileName);
         lastAcc = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double, std::milli> dur(lastAcc-startTime);
-        std::cout<<"time: "<<dur.count()/1000<<" s \n";
+        // std::cout<<"time: "<<dur.count()/1000<<" s \n";
     }
-    
+    OutPut(graph,fileName);
     std::cout<<"final score:"<<origin-graph->score<<"\n";
     // std::cout<<"Accept rate:"<<100*float(AcceptCount)/(AcceptCount+RejectCount)<<"%\n";
-
+    std::cout<<TP<<" "<<TN<<" "<<FP<<"  "<<FN<<"\n";
+    std::cout<<TPs<<" "<<TNs<<" "<<FPs<<"  "<<FNs<<"\n";
     delete graph;
 	return 0;
 }
@@ -129,6 +134,9 @@ void OutPut(Graph*graph,std::string fileName)
 }
 
 
+
+
+
 void RoutingWithCellMoving(Graph*graph)
 {
     graph->placementInit();
@@ -136,6 +144,8 @@ void RoutingWithCellMoving(Graph*graph)
     std::pair<std::string,CellInst*>movcellPair;
 
     int mov = 0;
+
+
     while((movcellPair=graph->cellMoving()).second)
     {
         CellInst* movCell = movcellPair.second;
@@ -153,25 +163,46 @@ void RoutingWithCellMoving(Graph*graph)
             continue;
         }
 
+        
 
         std::map<Net*,int>Nets = RelatedNets(movCell);
         std::vector<netinfo>Netsid;Netsid.reserve(Nets.size());
 
+        //Hpwl comarasion
+        int oldHpwl = 0;int newHpwl = 0;
+        int r = movCell->row;int c = movCell->col;
+        movCell->row = movCell->originalRow;
+        movCell->col = movCell->originalCol;
+        for(auto n:Nets){oldHpwl+=HPWL(n.first);}
+        movCell->row = r;
+        movCell->col = c;
+        for(auto n:Nets){newHpwl+=HPWL(n.first);}
+
+        int totalWl = 0;
         for(auto n:Nets)
         {
             int nid = std::stoi(n.first->netName.substr(1,-1));
-            int hpwl = HPWL(n.first);
-            int wl = graph->getNetGrids(nid)->wl();
+            int hpwl = HPWL(n.first);//new hpwl
+            int wl = graph->getNetGrids(nid)->wl();//old wl
+            totalWl+=wl;
             Netsid.push_back({nid,hpwl,wl});
         }
 
-        RouteAAoR(graph,Netsid,movCell);
-       
+
+        if(change_state(oldHpwl*oldHpwl,newHpwl*newHpwl,temperature))
+            RouteAAoR(graph,Netsid,movCell);
+        else{
+            graph->removeCellsBlkg(movCell);
+            movCell->row = movCell->originalRow;
+            movCell->col = movCell->originalCol;
+            graph->insertCellsBlkg(movCell);
+        }
+
         if(movCell->row == movCell->initRow && movCell->col == movCell->initCol){
 			graph->moved_cells.erase(movCell);
 		}
-        
+        // temperature2*=0.995;
     }
-
+    temperature*=0.95;
 
 }
