@@ -73,6 +73,8 @@ int main(int argc, char** argv)
     while(num--){
         RoutingWithCellMoving(graph);
         std::cout<<"move : score:"<<origin-graph->score<<"\n";
+        auto netlist = getNetlist(graph);
+        Route(graph,netlist);
         OutPut(graph,fileName);
         lastAcc = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double, std::milli> dur(lastAcc-startTime);

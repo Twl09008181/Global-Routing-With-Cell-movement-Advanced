@@ -6,7 +6,7 @@ extern std::chrono::duration<double, std::milli> RoutingTime;
 //Generic Routing Schedule
 //if routing success, add demand and save to infos&RipId. Caller must call Accept or Rejcet itself.
 //if routing failed , recover oldnet. 
-bool RoutingSchedule(Graph*graph,int netid,std::vector<ReroutInfo>&infos,std::vector<int>&RipId,int defaultLayer,ReroutInfo**overflowNet)
+bool RoutingSchedule(Graph*graph,int netid,std::vector<ReroutInfo>&infos,std::vector<int>&RipId,int defaultLayer,ReroutInfo**overflowNet,bool recover)
 {
 
     bool routingsuccess = true;
@@ -50,6 +50,7 @@ bool RoutingSchedule(Graph*graph,int netid,std::vector<ReroutInfo>&infos,std::ve
 
     else
     {
+        if(recover)
         AddingNet(graph,oldnet);//recover oldnet demand
         oldnet->set_fixed(false);
         routingsuccess = false;
@@ -286,27 +287,7 @@ bool change_state(int cost1,int cost2,float temperature)
 
 extern int RejectCount;
 extern int AcceptCount;
-//BatchRoute
-void BatchRoute(Graph*graph,std::vector<netinfo>&netlist,int start,int _end,routing_callback _callback,int batchsize,int default_layer)
-{
-    float sc = graph->score;
-    for(int idx = start; idx < _end; idx += batchsize)
-    {
-        std::vector<ReroutInfo>infos;std::vector<int>RipId;infos.reserve(batchsize);RipId.reserve(batchsize);
-        int s = idx;
-        int e = min((idx+batchsize),_end);
-        for(int j = s;j<e;j++){
-            int nid = netlist.at(j).netId;
-            _callback(graph,nid,infos,RipId,default_layer,nullptr);
-        }
-        if(graph->score < sc||change_state(sc,graph->score,netlist.size()-idx)){
-            Accept(graph,infos);AcceptCount++;
-            sc = graph->score;
-        }else{
-            Reject(graph,infos,RipId);RejectCount++;
-        }
-    }
-}
+
 
 
 
@@ -317,7 +298,7 @@ extern bool t2t;
 extern std::chrono::high_resolution_clock::time_point lastAcc;
 extern std::chrono::high_resolution_clock::time_point startTime;
 // //Route All Accept or Reject
-void RouteAAoR(Graph*graph,std::vector<netinfo>&netlist,CellInst*movCell)
+void RouteAAoR(Graph*graph,std::vector<netinfo>&netlist,CellInst*movCell,bool recover)
 {
     std::vector<int>blkgLayer;
     for(auto b:movCell->mCell->blkgs){blkgLayer.push_back(b.second.first);}
@@ -340,7 +321,10 @@ void RouteAAoR(Graph*graph,std::vector<netinfo>&netlist,CellInst*movCell)
     for(int j = 0;j<netlist.size();j++){
         int nid = netlist.at(j).netId;
         graph->getNetGrids(nid)->recover_mode = true;
-        if(!RoutingSchedule(graph,nid,infos,RipId))
+        
+        //new-----------------------------------------------------------------------------
+
+        if(!RoutingSchedule(graph,nid,infos,RipId,0,nullptr,recover))
         {
             failed.push_back(nid);
         }
@@ -348,6 +332,8 @@ void RouteAAoR(Graph*graph,std::vector<netinfo>&netlist,CellInst*movCell)
 
     bool success = true;
     // t2t = false;
+
+    int lastprocess = 0;
     for(auto nid:failed)
     {
         graph->getNetGrids(nid)->recover_mode = true;
@@ -356,7 +342,19 @@ void RouteAAoR(Graph*graph,std::vector<netinfo>&netlist,CellInst*movCell)
             success = false;
             break;
         }
+        lastprocess++;
     }
+    //---------------------new-----------------------------
+    if(!recover)
+    for(int i = lastprocess+1;i<failed.size();i++)
+    {
+        int nid = failed.at(i);
+        
+        auto net = graph->getNetGrids(nid);
+        net->recover_mode = true;
+        AddingNet(graph,net);
+    }
+    //---------------------new-----------------------------
     
     if(blkgCheck(graph,movCell,blkgLayer)&&success&&(graph->score < sc)){
     // if(success&&(graph->score < sc)){
