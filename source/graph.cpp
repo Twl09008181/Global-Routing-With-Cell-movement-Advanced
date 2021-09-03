@@ -441,7 +441,12 @@ void Graph::placementInit(){
 			p.second->updateOptimalRegion();
 			// insertCellsBlkg(p.second);
 		}	
+
+		for(const auto& p : CellInsts){
+			p.second->expandOptimalReion(20, RowBegin, RowEnd, ColBegin, ColEnd);
+		}
 	}else{
+		
 		for(const auto& p : CellInsts){
 			p.second->expandOptimalReion(movement_stage, RowBegin, RowEnd, ColBegin, ColEnd);
 		}

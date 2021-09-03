@@ -285,6 +285,7 @@ extern int AcceptCount;
 
 
 extern float temperature;
+extern double temperature2;
 extern float origin;
 extern bool t2t;
 extern std::chrono::high_resolution_clock::time_point lastAcc;
@@ -347,7 +348,9 @@ bool RouteAAoR(Graph*graph,std::vector<netinfo>&netlist,CellInst*movCell,bool re
         AddingNet(graph,net);
     }
     //---------------------new-----------------------------
-    if(blkgCheck(graph,movCell,blkgLayer)&&success&&(graph->score < sc || change_state(sc,graph->score,temperature))){
+    if(blkgCheck(graph,movCell,blkgLayer)&&success&&(graph->score < sc || change_state(sc,graph->score,temperature2))){
+        // if(blkgCheck(graph,movCell,blkgLayer)&&success&&(graph->score < sc)){
+        //    if(blkgCheck(graph,movCell,blkgLayer)&&success){ 
         Accept(graph,infos);
         sc = graph->score;
         if(movCell)
@@ -362,6 +365,8 @@ bool RouteAAoR(Graph*graph,std::vector<netinfo>&netlist,CellInst*movCell,bool re
             std::cout<<"time:"<<dur.count()/1000<<"s score:"<<origin - graph->score<<"\n";
             lastAcc = t2;
         }
+        // std::cout<<"time:"<<dur.count()/1000<<"s score:"<<origin - graph->score<<"\n";
+    
     }else{
         if(movCell)
         {
@@ -406,7 +411,7 @@ void Route(Graph*graph,std::vector<netinfo>&netlist)
             
         }
         else{
-            if((graph->score < sc || change_state(sc,graph->score,temperature))){
+            if((graph->score < sc || change_state(sc,graph->score,temperature2))){
                 Accept(graph,infos);
                 sc = graph->score;AcceptCount++;
                 auto t2 = std::chrono::high_resolution_clock::now();

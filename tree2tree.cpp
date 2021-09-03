@@ -37,8 +37,10 @@ int overflowSolved;
 bool firstRout = true;
 int Bxflex;
 
-double temperature = FLT_MAX;
-double temperature2 = 1;
+#include <math.h>
+// double temperature = FLT_MAX/1000000000000000;
+double temperature = pow(10,1);
+double temperature2 = pow(10,10);
 
 std::chrono::high_resolution_clock::time_point lastAcc;
 std::chrono::high_resolution_clock::time_point startTime;
@@ -79,10 +81,10 @@ int main(int argc, char** argv)
         std::cout<<"move : score:"<<origin-graph->score<<"\n";
         auto netlist = getNetlist(graph);
         // Route(graph,netlist);
-        // OutPut(graph,fileName);
+        OutPut(graph,fileName);
         lastAcc = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double, std::milli> dur(lastAcc-startTime);
-        // std::cout<<"time: "<<dur.count()/1000<<" s \n";
+        std::cout<<"time: "<<dur.count()/1000<<" s \n";
     }
     OutPut(graph,fileName);
     std::cout<<"final score:"<<origin-graph->score<<"\n";
@@ -189,7 +191,7 @@ void RoutingWithCellMoving(Graph*graph)
         }
 
 
-        if(change_state(oldHpwl*oldHpwl,newHpwl*newHpwl,temperature))
+        if(change_state(pow(oldHpwl,2),pow(newHpwl,2),temperature))
             RouteAAoR(graph,Netsid,movCell);
         else{
             graph->removeCellsBlkg(movCell);
@@ -201,7 +203,7 @@ void RoutingWithCellMoving(Graph*graph)
         if(movCell->row == movCell->initRow && movCell->col == movCell->initCol){
 			graph->moved_cells.erase(movCell);
 		}
-        // temperature2*=0.995;
+        temperature2*=0.995;
     }
     temperature*=0.95;
 
