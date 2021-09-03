@@ -279,30 +279,26 @@ bool BoundaryCheck(Graph*graph,NetGrids*net,node *v,const pos&delta,BoundingBox 
     int maxRow,minRow,maxCol,minCol,maxLay,minLay;
     Bx.getBound(maxRow,minRow,maxCol,minCol,maxLay,minLay);
 
-    int _errorNum = 1;
-
 
     //Routing Dir
-    if(delta.row!=0&&v->p.lay%2==1){_errorNum=0;}//error routing dir
-    if(delta.col!=0&&v->p.lay%2==0){_errorNum=0;}//error routing dir
+    if(delta.row!=0&&v->p.lay%2==1){if(errorNum){*errorNum = 0;}return false;}//error routing dir
+    if(delta.col!=0&&v->p.lay%2==0){if(errorNum){*errorNum = 0;}return false;}//error routing dir
     
 
     pos P = {v->p.row+delta.row,v->p.col+delta.col,v->p.lay+delta.lay};
-    //Bounding Box
-    if(P.row < minRow || P.row > maxRow){_errorNum = -1;} 
-    if(P.col < minCol || P.col > maxCol){_errorNum = -1;} 
+
 
     //Boundary checking
-    if(P.row<graph->RowBound().first||P.row>graph->RowBound().second){_errorNum = 0;} 
-    if(P.col<graph->ColBound().first||P.col>graph->ColBound().second){_errorNum = 0;} 
+    if(P.row<graph->RowBound().first||P.row>graph->RowBound().second){if(errorNum){*errorNum = 0;}return false;} 
+    if(P.col<graph->ColBound().first||P.col>graph->ColBound().second){if(errorNum){*errorNum = 0;}return false;} 
     int minLayer = graph->getNet(net->NetId).minLayer;
-    if(P.lay<minLayer ||P.lay>graph->LayerNum()){_errorNum=0;}//minLayer checking
-   
-
-    if(errorNum){*errorNum = _errorNum;}
-
+    if(P.lay<minLayer ||P.lay>graph->LayerNum()){if(errorNum){*errorNum = 0;}return false;}//minLayer checking
     
-    return _errorNum==1;
+    //Bounding Box
+    if(P.row < minRow || P.row > maxRow){if(errorNum){*errorNum = -1;}return false;} 
+    if(P.col < minCol || P.col > maxCol){if(errorNum){*errorNum = -1;}return false;} 
+    
+    return true;
 }
 
 bool CapacityCheck(NetGrids*net,Ggrid&g)
@@ -696,6 +692,9 @@ std::pair<ReroutInfo,bool> Reroute(Graph*graph,int NetId,TwoPinNets&twopins,bool
             return {ReroutInfo{CollectTree,netgrids},false};
         }
     }
+
+
+
     return {ReroutInfo{T,netgrids},true};
 }
 
