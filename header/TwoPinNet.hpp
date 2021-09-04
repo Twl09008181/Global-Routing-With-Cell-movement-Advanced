@@ -3,6 +3,7 @@
 
 #include "Routing.hpp"
 #include "graph.hpp"
+#include "flute.h"
 
 extern Graph* graph;
 using TwoPinNet = std::pair<node*,node*>;

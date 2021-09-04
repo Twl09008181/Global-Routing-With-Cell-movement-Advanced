@@ -17,9 +17,10 @@
 #include <vector>
 #include <queue>
 #include <functional>
-extern "C" {
-    #include "../flute-3.1/flute.h"
-}
+#include "flute.h"
+//extern "C" {
+//    #include "../flute-3.1/flute.h"
+//}
 
 std::vector<std::string> split(const std::string&str,char symbol,int l,int r,int num);
 
