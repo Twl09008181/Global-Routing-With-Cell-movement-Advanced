@@ -122,7 +122,7 @@ struct tree{
     }
     ~tree()
     {
-        for(auto n:all){delete n;}
+        //for(auto n:all){delete n;}
     }
 };
 
