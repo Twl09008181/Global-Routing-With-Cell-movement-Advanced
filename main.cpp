@@ -3,49 +3,41 @@
 #include "header/TwoPinNet.hpp"
 #include "header/analysis.hpp"
 #include "header/RoutingSchedule.hpp"
-
+// #include <Windows.h>
 #include <time.h>
-#include <thread>
 #include <algorithm>
+#include <thread>
 Graph* graph = nullptr;
-
-
-void Init( std::string path,std::string fileName){graph = new Graph(path+fileName);}
+std::string _fileName;
+void timerStop()
+{
+    sleep(3600);
+    std::cout<<"times up end the program\n";
+    exit(1);
+}
+void Init(std::string fileName){graph = new Graph(fileName);}
 void OutPut(Graph*graph,std::string fileName);
-// void OnlyRouting(Graph*graph,int batchSize = 1,bool overflow = false,float topPercent = 0);
 void RoutingWithCellMoving(Graph*graph);
 
 #include <chrono>
-std::chrono::duration<double, std::milli> IN;
-std::chrono::duration<double, std::milli> RoutingTime;
-std::chrono::duration<double, std::milli> OverFlowProcessTime;
-std::chrono::duration<double, std::milli> pinsTime;
 
-std::chrono::duration<double,std::milli>movtime;
-std::chrono::duration<double,std::milli>collectTime;
 
 table strtable;
 float origin;
-int TP,TN,FP,FN;
-float TPs,TNs,FPs,FNs;
 bool t2t = true;//---------------------------------------t2t or mz-------------------------------------
-int failedCount;
-int RejectCount;
-int AcceptCount;
-int overflowSolved;
 
-bool firstRout = true;
-int Bxflex;
 
-#include <math.h>
-// double temperature = FLT_MAX/1000000000000000;
-double temperature = pow(10,1);
-double temperature2 = pow(10,10);
+double temperature = pow(10,0);   //for hpwl check  
+double temperature2 = pow(10,10);  // for routing score result check (RoutingSchedule.hpp)
+double temp2decadeR = 0.995;
 
 std::chrono::high_resolution_clock::time_point lastAcc;
 std::chrono::high_resolution_clock::time_point startTime;
 int main(int argc, char** argv)
-{
+{   
+    
+    std::thread timerThread(timerStop);
+
     lastAcc  = std::chrono::high_resolution_clock::now();
     startTime = std::chrono::high_resolution_clock::now();
 
@@ -53,12 +45,10 @@ int main(int argc, char** argv)
         std::cerr<<"Wrong parameters!"<<std::endl;
         return -1;
     }
-    std::string path = "./benchmark/";
-    std::string fileName = argv[1];
-
+    _fileName = argv[1];
     //---------------------------------------init-----------------------------------------------
     readLUT();
-    Init(path,fileName);    
+    Init(_fileName);    
     strtable.init(graph);
     origin = graph->score;
     
@@ -66,32 +56,27 @@ int main(int argc, char** argv)
     auto netlist = getNetlist(graph);
     t2t = true;//using t2t mode
     Route(graph,netlist);
-    OutPut(graph,fileName);
+    OutPut(graph,_fileName);
     lastAcc = std::chrono::high_resolution_clock::now();
     std::chrono::duration<double,std::milli>FRT = lastAcc-startTime;;
-    firstRout = false;
     std::cout<<"first rout score:"<<origin-graph->score<<"  spend:  "<<FRT.count()/1000<<"s\n";
     //-------------------------------------first route-----------------------------------------
 
 
-    t2t = false;//Maze routing
+    
     int num = 10000;
     while(num--){
         RoutingWithCellMoving(graph);
         std::cout<<"move : score:"<<origin-graph->score<<"\n";
-        auto netlist = getNetlist(graph);
-        // Route(graph,netlist);
-        OutPut(graph,fileName);
         lastAcc = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double, std::milli> dur(lastAcc-startTime);
         std::cout<<"time: "<<dur.count()/1000<<" s \n";
     }
-    OutPut(graph,fileName);
+    
     std::cout<<"final score:"<<origin-graph->score<<"\n";
-    // std::cout<<"Accept rate:"<<100*float(AcceptCount)/(AcceptCount+RejectCount)<<"%\n";
-    std::cout<<TP<<" "<<TN<<" "<<FP<<"  "<<FN<<"\n";
-    std::cout<<TPs<<" "<<TNs<<" "<<FPs<<"  "<<FNs<<"\n";
     delete graph;
+
+    timerThread.join();
 	return 0;
 }
 
@@ -105,35 +90,7 @@ std::map<Net*,int> RelatedNets(CellInst*c)
     }
     return Nets;
 }
-void OutPut(Graph*graph,std::string fileName)
-{
 
-    std::vector<std::string>segments;
-    std::cout<<"Routing complete !\n";
-    PrintAll(graph,&segments);
-    //寫成輸出檔案
-    int NumRoutes = segments.size();
-    fileName = fileName.substr(0,fileName.size()-4);
-    fileName = fileName+"Out.txt";
-    std::ofstream os{fileName};
-    if(!os){
-        std::cerr<<"error:file "<<fileName<<" cann't open!\n";
-        exit(1);
-    } 
-
-    os<<"NumMovedCellInst "<< graph->moved_cells.size() <<"\n";
-    for(auto cell:graph->moved_cells)
-        os<<"CellInst "<< cell->name << " " << cell->row << " " << cell->col <<"\n";
-    os<<"NumRoutes "<<NumRoutes<<"\n";
-
-    for(auto s:segments)
-    {
-        os<<s<<"\n";
-    }
-    std::cout<<"saving done!\n";
-
-    os.close();
-}
 
 
 
@@ -203,8 +160,8 @@ void RoutingWithCellMoving(Graph*graph)
         if(movCell->row == movCell->initRow && movCell->col == movCell->initCol){
 			graph->moved_cells.erase(movCell);
 		}
-        temperature2*=0.995;
+        temperature2*=temp2decadeR;
     }
-    temperature*=0.95;
+    
 
 }

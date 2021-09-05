@@ -199,7 +199,35 @@ inline void utilization(Graph*graph,std::string fileName)
 
 
 
+inline void OutPut(Graph*graph,std::string fileName)
+{
 
+    std::vector<std::string>segments;
+    std::cout<<"Routing complete !\n";
+    PrintAll(graph,&segments);
+    //寫成輸出檔案
+    int NumRoutes = segments.size();
+    fileName = fileName.substr(0,fileName.size()-4);
+    fileName = fileName+"Out.txt";
+    std::ofstream os{fileName};
+    if(!os){
+        std::cerr<<"error:file "<<fileName<<" cann't open!\n";
+        exit(1);
+    } 
+
+    os<<"NumMovedCellInst "<< graph->moved_cells.size() <<"\n";
+    for(auto cell:graph->moved_cells)
+        os<<"CellInst "<< cell->name << " " << cell->row << " " << cell->col <<"\n";
+    os<<"NumRoutes "<<NumRoutes<<"\n";
+
+    for(auto s:segments)
+    {
+        os<<s<<"\n";
+    }
+    std::cout<<"saving done!\n";
+
+    os.close();
+}
 
 
 

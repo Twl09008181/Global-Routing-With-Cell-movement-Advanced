@@ -1,6 +1,6 @@
 #include "../header/Routing.hpp"
 #include "../header/TwoPinNet.hpp"
-#include <chrono>
+
 bool node::IsSingle()//Is leaf and no parent
 {
     return routing_tree->leaf.find(this)!=routing_tree->leaf.end()&&!parent;

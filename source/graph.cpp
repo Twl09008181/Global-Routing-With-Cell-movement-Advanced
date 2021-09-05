@@ -443,14 +443,10 @@ void Graph::placementInit(){
 		}	
 
 		for(const auto& p : CellInsts){
-			p.second->expandOptimalReion(1, RowBegin, RowEnd, ColBegin, ColEnd);
-		}
-	}else{
-		
-		for(const auto& p : CellInsts){
-			p.second->expandOptimalReion(movement_stage, RowBegin, RowEnd, ColBegin, ColEnd);
+			p.second->expandOptimalReion(3, RowBegin, RowEnd, ColBegin, ColEnd);
 		}
 	}
+
 	movement_stage++;
 
 	//calculate every possible movable position's grade 
@@ -586,6 +582,7 @@ bool Graph::insertCellsBlkg(CellInst* cell,bool nocheck){
 			canadd = false;
 			break;
 		}
+		this->lay_uti(grid.lay).first+=blkg.second;
 		blkgRecord.push_back({&grid,blkg.second});
 		grid.add_demand(blkg.second,0,nocheck);
 	}

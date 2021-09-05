@@ -26,12 +26,8 @@ bool RoutingSchedule(Graph*graph,int netid,std::vector<ReroutInfo>&infos,std::ve
     oldnet->set_fixed(true);//每次拆掉就fixed,直到accept or rejct or failed.
 
     //-------------------------------------Routing---------------------------------
-    #include <chrono>
-    auto t1 = std::chrono::high_resolution_clock::now();
     TwoPinNets twopins = twoPinsGen(graph->getNet(netid),defaultLayer);
     std::pair<ReroutInfo,bool> result = Reroute(graph,netid,twopins,overflowmode);
-    auto t2 = std::chrono::high_resolution_clock::now();
-    RoutingTime+=t2-t1;
     //-------------------------------------Adding or Recover---------------------------------
     if(result.second)//can connect all twopin-nets
     {
@@ -165,7 +161,7 @@ bool OverflowProcess(Graph*graph,NetGrids*overflownet,std::vector<ReroutInfo>&in
     return overflowGrids.empty();
 }
 
-extern std::chrono::duration<double, std::milli> OverFlowProcessTime;
+
 bool overFlowRouting(Graph*graph,int Netid,std::vector<ReroutInfo>&infos,std::vector<int>&RipId,int defaultLayer,ReroutInfo**)
 {
     ReroutInfo* overflowNet = new ReroutInfo;
@@ -184,7 +180,6 @@ bool overFlowRouting(Graph*graph,int Netid,std::vector<ReroutInfo>&infos,std::ve
         RipUpNet(graph,oldnet);
         AddingNet(graph,overflowNet->netgrids);//force add
         
-        auto t1 = std::chrono::high_resolution_clock::now();
         if(!OverflowProcess(graph,overflowNet->netgrids,infos,RipId))//failed
         {
 
@@ -200,8 +195,6 @@ bool overFlowRouting(Graph*graph,int Netid,std::vector<ReroutInfo>&infos,std::ve
             infos.push_back(*overflowNet);
             RipId.push_back(Netid);
         } 
-        auto t2 = std::chrono::high_resolution_clock::now();
-        OverFlowProcessTime+=t2-t1;
     }
     else{//success
         if(graph->getNetGrids(Netid)->isOverflow())
@@ -271,23 +264,20 @@ std::vector<netinfo> getNetlist(Graph*graph)//sort by  wl - hpwl
 }
 
 
-#include <stdio.h>
-#include <stdlib.h>
-#include <time.h>
-
-
-
-extern int RejectCount;
-extern int AcceptCount;
 
 
 
 
 
-extern float temperature;
+
+
+
+
+
+extern std::string _fileName;
 extern double temperature2;
 extern float origin;
-extern bool t2t;
+
 extern std::chrono::high_resolution_clock::time_point lastAcc;
 extern std::chrono::high_resolution_clock::time_point startTime;
 // //Route All Accept or Reject
@@ -361,6 +351,7 @@ bool RouteAAoR(Graph*graph,std::vector<netinfo>&netlist,CellInst*movCell,bool re
         auto t2 = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double, std::milli> dur = t2-lastAcc;
         if(dur.count()/1000>30){
+            OutPut(graph,_fileName);
             dur = t2-startTime;
             std::cout<<"time:"<<dur.count()/1000<<"s score:"<<origin - graph->score<<"\n";
             lastAcc = t2;
@@ -411,9 +402,9 @@ void Route(Graph*graph,std::vector<netinfo>&netlist)
             
         }
         else{
-            if((graph->score < sc || change_state(sc,graph->score,temperature2))){
+            if((graph->score < sc )){
                 Accept(graph,infos);
-                sc = graph->score;AcceptCount++;
+                sc = graph->score;
                 auto t2 = std::chrono::high_resolution_clock::now();
                 std::chrono::duration<double, std::milli> dur = t2-lastAcc;
                 
@@ -424,7 +415,7 @@ void Route(Graph*graph,std::vector<netinfo>&netlist)
                 }
             }
             else{
-                Reject(graph,infos,RipId);RejectCount++;
+                Reject(graph,infos,RipId);
             }
         }
   
@@ -437,10 +428,10 @@ void Route(Graph*graph,std::vector<netinfo>&netlist)
         {
             if(graph->score < sc){
                 Accept(graph,infos);
-                sc = graph->score;AcceptCount++;
+                sc = graph->score;
             }
             else{
-                Reject(graph,infos,RipId);RejectCount++;
+                Reject(graph,infos,RipId);
             }
         }
     }

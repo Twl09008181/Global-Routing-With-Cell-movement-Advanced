@@ -1,8 +1,8 @@
-#CXX := /opt/rh/devtoolset-6/root/usr/bin/g++
-# CC := /opt/rh/devtoolset-6/root/usr/bin/gcc
+CXX := /opt/rh/devtoolset-6/root/usr/bin/g++
+CC := /opt/rh/devtoolset-6/root/usr/bin/gcc
 
-CXX := g++
-#CC := gcc
+# CXX := g++
+# CC := gcc
 DIR_HEADER := ./header
 DIR_SOURCE := ./source
 CXXFLAGS := -std=c++11 -g -c -I ./header -O2
@@ -14,8 +14,8 @@ LIBSRC += $(wildcard ${DIR_SOURCE}/*.cpp)
 LIBOBJ = $(patsubst %.cpp,%.o,${LIBSRC})
 
 
-all : $(LIBOBJ) tree2tree.cpp
-	${CXX} -o tree2tree.exe $^
+all : $(LIBOBJ) main.cpp
+	${CXX} -o main.exe $^
 
 
 ${DIR_SOURCE}/graph.o:${DIR_SOURCE}/graph.cpp ${DIR_HEADER}/graph.hpp ${DIR_HEADER}/data_structure.hpp ${DIR_HEADER}/Routing.hpp

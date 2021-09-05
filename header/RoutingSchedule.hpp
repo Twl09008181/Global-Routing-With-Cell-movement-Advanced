@@ -42,7 +42,7 @@ inline bool change_state(float cost1,float cost2,float temperature)
 {
 
     float c = cost1-cost2;//more bigger, more good 
-    srand( time(NULL) );
+    srand(1);
     double x = (double) rand() / (RAND_MAX + 1.0);
 
     double successProb = 1 /(1+exp(-c/temperature));
