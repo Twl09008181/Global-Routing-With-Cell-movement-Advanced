@@ -15,7 +15,7 @@ LIBOBJ = $(patsubst %.cpp,%.o,${LIBSRC})
 
 
 all : $(LIBOBJ) main.cpp
-	${CXX} -o main.exe $^
+	${CXX} -lpthread -o main.exe $^
 
 
 ${DIR_SOURCE}/graph.o:${DIR_SOURCE}/graph.cpp ${DIR_HEADER}/graph.hpp ${DIR_HEADER}/data_structure.hpp ${DIR_HEADER}/Routing.hpp
