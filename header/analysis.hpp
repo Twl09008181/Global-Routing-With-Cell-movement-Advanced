@@ -207,8 +207,6 @@ inline void OutPut(Graph*graph,std::string fileName)
     PrintAll(graph,&segments);
     //寫成輸出檔案
     int NumRoutes = segments.size();
-    fileName = fileName.substr(0,fileName.size()-4);
-    fileName = fileName+"Out.txt";
     std::ofstream os{fileName};
     if(!os){
         std::cerr<<"error:file "<<fileName<<" cann't open!\n";

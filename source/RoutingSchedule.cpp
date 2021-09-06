@@ -274,7 +274,7 @@ std::vector<netinfo> getNetlist(Graph*graph)//sort by  wl - hpwl
 
 
 
-extern std::string _fileName;
+extern std::string outputFile;
 extern double temperature2;
 extern float origin;
 
@@ -351,7 +351,7 @@ bool RouteAAoR(Graph*graph,std::vector<netinfo>&netlist,CellInst*movCell,bool re
         auto t2 = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double, std::milli> dur = t2-lastAcc;
         if(dur.count()/1000>30){
-            OutPut(graph,_fileName);
+            OutPut(graph,outputFile);
             dur = t2-startTime;
             std::cout<<"time:"<<dur.count()/1000<<"s score:"<<origin - graph->score<<"\n";
             lastAcc = t2;

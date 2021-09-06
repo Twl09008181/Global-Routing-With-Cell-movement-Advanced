@@ -9,7 +9,7 @@
 #include <algorithm>
 #include <thread>
 Graph* graph = nullptr;
-std::string _fileName;
+
 void timerStop()
 {
     sleep(3600);
@@ -31,7 +31,7 @@ bool t2t = true;//---------------------------------------t2t or mz--------------
 double temperature = pow(10,0);   //for hpwl check  
 double temperature2 = pow(10,10);  // for routing score result check (RoutingSchedule.hpp)
 double temp2decadeR = 0.995;
-
+std::string outputFile;
 std::chrono::high_resolution_clock::time_point lastAcc;
 std::chrono::high_resolution_clock::time_point startTime;
 int main(int argc, char** argv)
@@ -42,14 +42,16 @@ int main(int argc, char** argv)
     lastAcc  = std::chrono::high_resolution_clock::now();
     startTime = std::chrono::high_resolution_clock::now();
 
-    if(argc!=2){
+    if(argc!=3){
         std::cerr<<"Wrong parameters!"<<std::endl;
+        std::cerr<<"please enter ./cada0030_final.exe <inputName.txt> <outputName.txt>\n";
         return -1;
     }
-    _fileName = argv[1];
+    std::string input = argv[1];
+    outputFile = argv[2];
     //---------------------------------------init-----------------------------------------------
     readLUT();
-    Init(_fileName);    
+    Init(input);    
     strtable.init(graph);
     origin = graph->score;
     
@@ -57,7 +59,7 @@ int main(int argc, char** argv)
     auto netlist = getNetlist(graph);
     t2t = true;//using t2t mode
     Route(graph,netlist);
-    OutPut(graph,_fileName);
+    OutPut(graph,outputFile);
     lastAcc = std::chrono::high_resolution_clock::now();
     std::chrono::duration<double,std::milli>FRT = lastAcc-startTime;;
     std::cout<<"first rout score:"<<origin-graph->score<<"  spend:  "<<FRT.count()/1000<<"s\n";
@@ -69,12 +71,12 @@ int main(int argc, char** argv)
     while(1){
         RoutingWithCellMoving(graph);
         std::cout<<"move : score:"<<origin-graph->score<<"\n";
-        OutPut(graph,_fileName);
+        OutPut(graph,outputFile);
         lastAcc = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double, std::milli> dur(lastAcc-startTime);
         std::cout<<"time: "<<dur.count()/1000<<" s \n";
     }
-    OutPut(graph,_fileName);
+    OutPut(graph,outputFile);
     std::cout<<"final score:"<<origin-graph->score<<"\n";
     delete graph;
     timerThread.join();
