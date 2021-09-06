@@ -65,18 +65,18 @@ int main(int argc, char** argv)
 
 
     
-    int num = 10000;
-    while(num--){
+    
+    while(1){
         RoutingWithCellMoving(graph);
         std::cout<<"move : score:"<<origin-graph->score<<"\n";
+        OutPut(graph,_fileName);
         lastAcc = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double, std::milli> dur(lastAcc-startTime);
         std::cout<<"time: "<<dur.count()/1000<<" s \n";
     }
-    
+    OutPut(graph,_fileName);
     std::cout<<"final score:"<<origin-graph->score<<"\n";
     delete graph;
-
     timerThread.join();
 	return 0;
 }

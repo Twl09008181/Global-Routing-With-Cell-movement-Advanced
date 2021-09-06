@@ -443,7 +443,7 @@ void Graph::placementInit(){
 		}	
 
 		for(const auto& p : CellInsts){
-			p.second->expandOptimalReion(3, RowBegin, RowEnd, ColBegin, ColEnd);
+			p.second->expandOptimalReion(1), RowBegin, RowEnd, ColBegin, ColEnd);
 		}
 	}
 
