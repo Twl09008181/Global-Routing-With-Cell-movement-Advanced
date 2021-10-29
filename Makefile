@@ -1,8 +1,8 @@
-CXX := /opt/rh/devtoolset-6/root/usr/bin/g++
-CC := /opt/rh/devtoolset-6/root/usr/bin/gcc
+#CXX := /opt/rh/devtoolset-6/root/usr/bin/g++
+#CC := /opt/rh/devtoolset-6/root/usr/bin/gcc
 
-# CXX := g++
-# CC := gcc
+CXX := g++
+CC := gcc
 DIR_HEADER := ./header
 DIR_SOURCE := ./source
 CXXFLAGS := -std=c++11 -g -c -I ./header -O2
